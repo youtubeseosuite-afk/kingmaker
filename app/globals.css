@@ -340,3 +340,94 @@ input {
   border-color: var(--accent-gold);
   color: var(--accent-gold-bright);
 }
+
+.btn--primary {
+  background: var(--accent-gold);
+  border-color: var(--accent-gold);
+  color: #1a1408;
+  font-weight: 600;
+}
+
+.btn--primary:hover {
+  background: var(--accent-gold-bright);
+  border-color: var(--accent-gold-bright);
+  color: #1a1408;
+}
+
+/* ---------- Auth screen ---------- */
+
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(ellipse at top, rgba(197, 160, 89, 0.06), transparent 55%),
+    var(--bg-base);
+  padding: 20px;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 360px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px 28px;
+}
+
+.auth-card__title {
+  font-size: 20px;
+  text-align: center;
+}
+
+.auth-card__subtitle {
+  color: var(--text-faint);
+  font-size: 13px;
+  text-align: center;
+  margin-top: 6px;
+  margin-bottom: 24px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-form__label {
+  color: var(--text-secondary);
+  font-size: 12px;
+  margin-top: 10px;
+}
+
+.auth-form__actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.auth-form__actions .btn {
+  flex: 1;
+  text-align: center;
+}
+
+.auth-message {
+  font-size: 12.5px;
+  padding: 8px 10px;
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+}
+
+.auth-message--error {
+  color: #e0929c;
+  border-color: var(--danger);
+  background: rgba(139, 47, 59, 0.15);
+}
+
+.auth-message--success {
+  color: #a8caa8;
+  border-color: var(--success);
+  background: rgba(92, 138, 92, 0.15);
+}
