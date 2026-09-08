@@ -1,4 +1,6 @@
 // Path: app/dashboard/prior/page.tsx | Type: UPDATE
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import PriorView from "./prior-view";
