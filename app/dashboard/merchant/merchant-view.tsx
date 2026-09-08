@@ -81,12 +81,17 @@ export default function MerchantView({
     setError(null);
     setSent(false);
     startTransition(async () => {
-      try {
-        await sendGoldToKing(worldId, roleProfileId, kingRoleProfileId, parsedAmount);
+      const result = await sendGoldToKing(
+        worldId,
+        roleProfileId,
+        kingRoleProfileId,
+        parsedAmount
+      );
+      if (result.error) {
+        setError(result.error);
+      } else {
         setSent(true);
         router.refresh();
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Overførsel fejlede");
       }
     });
   }
