@@ -67,15 +67,24 @@ export default async function WizardPage() {
           .in("tile_id", tileIds)
       : { data: [] };
 
+  const { data: buildings } = roleProfile
+    ? await supabase
+        .from("buildings")
+        .select("building_type, level")
+        .eq("role_profile_id", roleProfile.id)
+    : { data: [] };
+
   return (
     <WizardView
       sight={roleProfile?.sight ?? 0}
+      roleProfileId={roleProfile?.id ?? null}
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
       tiles={tiles ?? []}
       visibility={visibility ?? []}
       ownership={ownership ?? []}
       myRealmId={realm.id}
+      buildings={buildings ?? []}
     />
   );
 }
