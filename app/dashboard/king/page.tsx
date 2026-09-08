@@ -1,4 +1,6 @@
 // Path: app/dashboard/king/page.tsx | Type: UPDATE
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import KingView from "./king-view";
