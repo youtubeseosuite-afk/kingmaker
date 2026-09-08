@@ -1,5 +1,5 @@
 "use server";
-// Path: app/dashboard/merchant/actions.ts | Type: NEW
+// Path: app/dashboard/merchant/actions.ts | Type: UPDATE
 
 import { createClient } from "../../../lib/supabase/server";
 
@@ -8,7 +8,7 @@ export async function sendGoldToKing(
   fromRoleProfileId: string,
   toRoleProfileId: string,
   amount: number
-) {
+): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { error } = await supabase.rpc("execute_role_transaction", {
     p_world_id: worldId,
@@ -22,6 +22,8 @@ export async function sendGoldToKing(
   });
 
   if (error) {
-    throw new Error(error.message);
+    return { error: error.message };
   }
+
+  return {};
 }
