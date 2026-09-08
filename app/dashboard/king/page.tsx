@@ -32,23 +32,30 @@ export default async function KingPage() {
     .eq("role", "king")
     .maybeSingle();
 
-  const { data: kingdomResources } = await supabase
-    .from("kingdom_resources")
-    .select("resource_code, amount")
-    .eq("realm_id", realm.id);
+  const { data: kingdomResources } = await supabase.rpc("get_kingdom_resources", {
+    p_realm_id: realm.id,
+  });
 
   const { data: roleResources } = roleProfile
+    ? await supabase.rpc("get_role_resources", {
+        p_role_profile_id: roleProfile.id,
+      })
+    : { data: [] };
+
+  const { data: buildings } = roleProfile
     ? await supabase
-        .from("role_resources")
-        .select("resource_code, amount")
+        .from("buildings")
+        .select("building_type, level")
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
   return (
     <KingView
       legitimacy={roleProfile?.legitimacy ?? 0}
+      roleProfileId={roleProfile?.id ?? null}
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
+      buildings={buildings ?? []}
     />
   );
 }
