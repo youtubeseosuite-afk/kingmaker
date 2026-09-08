@@ -1,9 +1,12 @@
 "use client";
-// Path: app/dashboard/prior/prior-view.tsx | Type: NEW
+// Path: app/dashboard/prior/prior-view.tsx | Type: UPDATE
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { upgradeBuilding, type PriorBuildingType } from "./actions";
 
 type ResourceRow = { resource_code: string; amount: number };
+type BuildingRow = { building_type: PriorBuildingType; level: number };
 
 const resourceLabels: Record<string, string> = {
   food: "Mad",
@@ -11,14 +14,38 @@ const resourceLabels: Record<string, string> = {
   stone: "Sten",
 };
 
+const buildingOrder: PriorBuildingType[] = [
+  "monastery",
+  "cathedral",
+  "confessional",
+  "pilgrim_route",
+];
+
+const buildingLabels: Record<PriorBuildingType, string> = {
+  monastery: "Klosteret",
+  cathedral: "Katedralen",
+  confessional: "Skriftestolen",
+  pilgrim_route: "Pilgrimsruten",
+};
+
+const buildingDescriptions: Record<PriorBuildingType, string> = {
+  monastery: "Priorens base — hæver Legitimitet passivt",
+  cathedral: "Rigets store sluteffekt — massiv Prestige og Legitimitet",
+  confessional: "Låser flere velsignelses-typer op",
+  pilgrim_route: "Passiv tilstrømning til den fælles pulje",
+};
+
 function amountFor(rows: ResourceRow[], code: string) {
   return rows.find((r) => r.resource_code === code)?.amount ?? 0;
 }
 
-const clergyProjects = [
-  { name: "Katedral — fundament", progress: 22, eta: "18t 0m" },
-  { name: "Kloster — niveau 2", progress: 71, eta: "1t 40m" },
-];
+function levelFor(buildings: BuildingRow[], type: PriorBuildingType) {
+  return buildings.find((b) => b.building_type === type)?.level ?? 1;
+}
+
+function costFor(level: number) {
+  return { wood: 50 * level, stone: 40 * level };
+}
 
 const blessings = [
   { name: "Velsignelse over garnisonen", target: "Kongen", status: "Aktiv" },
@@ -30,25 +57,48 @@ const events = [
   { time: "09:05", text: "Klosteret modtog en gave fra en fremmed rejsende" },
 ];
 
-const quickActions = ["Udsted velsignelse", "Ekskommunikér", "Byg kloster"];
+const quickActions = ["Udsted velsignelse", "Ekskommunikér"];
 
 const tabs = ["Kloster", "Velsignelser"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function PriorView({
   legitimacy,
+  roleProfileId,
   kingdomResources,
+  buildings,
 }: {
   legitimacy: number;
+  roleProfileId: string | null;
   kingdomResources: ResourceRow[];
+  buildings: BuildingRow[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Kloster");
+  const [buildError, setBuildError] = useState<string | null>(null);
+  const router = useRouter();
+  const [isBuildPending, startBuildTransition] = useTransition();
+
+  const wood = amountFor(kingdomResources, "wood");
+  const stone = amountFor(kingdomResources, "stone");
 
   const resources = [
     { code: "food", value: amountFor(kingdomResources, "food"), gold: true },
-    { code: "wood", value: amountFor(kingdomResources, "wood") },
-    { code: "stone", value: amountFor(kingdomResources, "stone") },
+    { code: "wood", value: wood },
+    { code: "stone", value: stone },
   ];
+
+  function handleUpgrade(buildingType: PriorBuildingType) {
+    if (!roleProfileId) return;
+    setBuildError(null);
+    startBuildTransition(async () => {
+      const result = await upgradeBuilding(roleProfileId, buildingType);
+      if (result.error) {
+        setBuildError(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
 
   return (
     <div className="dashboard">
@@ -61,7 +111,7 @@ export default function PriorView({
             >
               <span className="resource-pill__label">{resourceLabels[r.code]}</span>
               <span className="resource-pill__value">
-                {r.value.toLocaleString("da-DK")}
+                {Math.floor(r.value).toLocaleString("da-DK")}
               </span>
             </div>
           ))}
@@ -97,20 +147,53 @@ export default function PriorView({
 
         {activeTab === "Kloster" && (
           <div>
-            {clergyProjects.map((project) => (
-              <div className="build-project" key={project.name}>
-                <div className="build-project__head">
-                  <span className="build-project__name">{project.name}</span>
-                  <span className="build-project__eta">{project.eta}</span>
+            {buildError && (
+              <p className="auth-message auth-message--error">{buildError}</p>
+            )}
+            {buildingOrder.map((type) => {
+              const level = levelFor(buildings, type);
+              const cost = costFor(level);
+              const maxed = level >= 30;
+              const canAfford = wood >= cost.wood && stone >= cost.stone;
+
+              return (
+                <div className="build-project" key={type}>
+                  <div className="build-project__head">
+                    <span className="build-project__name">
+                      {buildingLabels[type]} — niveau {level}
+                    </span>
+                    <span className="build-project__eta">
+                      {maxed ? "Maks niveau" : `${cost.wood} træ · ${cost.stone} sten`}
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-faint)",
+                      margin: "4px 0 6px",
+                    }}
+                  >
+                    {buildingDescriptions[type]}
+                  </p>
+                  <div className="progress">
+                    <div
+                      className="progress__fill"
+                      style={{ width: `${(level / 30) * 100}%` }}
+                    />
+                  </div>
+                  {!maxed && (
+                    <button
+                      className="btn btn--primary"
+                      style={{ marginTop: 8 }}
+                      disabled={isBuildPending || !canAfford}
+                      onClick={() => handleUpgrade(type)}
+                    >
+                      {canAfford ? "Opgrader" : "Ikke råd"}
+                    </button>
+                  )}
                 </div>
-                <div className="progress">
-                  <div
-                    className="progress__fill"
-                    style={{ width: `${project.progress}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
