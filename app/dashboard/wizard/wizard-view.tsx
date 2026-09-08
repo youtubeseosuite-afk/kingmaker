@@ -1,9 +1,13 @@
 "use client";
-// Path: app/dashboard/wizard/wizard-view.tsx | Type: NEW
+// Path: app/dashboard/wizard/wizard-view.tsx | Type: UPDATE
 
 import { useState } from "react";
+import MapGrid from "../map-grid";
 
 type ResourceRow = { resource_code: string; amount: number };
+type Tile = { id: string; x: number; y: number; terrain: string };
+type VisibilityRow = { tile_id: string; visibility: "unknown" | "scouted" | "visible" };
+type OwnershipRow = { tile_id: string; status: string; owner_realm_id: string | null };
 
 const resourceLabels: Record<string, string> = {
   crystal: "Krystal",
@@ -15,11 +19,6 @@ const resourceLabels: Record<string, string> = {
 function amountFor(rows: ResourceRow[], code: string) {
   return rows.find((r) => r.resource_code === code)?.amount ?? 0;
 }
-
-const scoutedTiles = [
-  { coords: "(34, 12)", note: "Ukendt hær observeret" },
-  { coords: "(41, 9)", note: "Krystalforekomst fundet" },
-];
 
 const activeEffects = [
   { name: "Indsigt — Slot", target: "Kongens garnison", expires: "3t 10m" },
@@ -39,10 +38,18 @@ export default function WizardView({
   sight,
   kingdomResources,
   roleResources,
+  tiles,
+  visibility,
+  ownership,
+  myRealmId,
 }: {
   sight: number;
   kingdomResources: ResourceRow[];
   roleResources: ResourceRow[];
+  tiles: Tile[];
+  visibility: VisibilityRow[];
+  ownership: OwnershipRow[];
+  myRealmId: string;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Synskraft");
 
@@ -52,6 +59,23 @@ export default function WizardView({
     { code: "wood", value: amountFor(kingdomResources, "wood") },
     { code: "stone", value: amountFor(kingdomResources, "stone") },
   ];
+
+  const visibilityMap: Record<string, "unknown" | "scouted" | "visible"> = {};
+  visibility.forEach((v) => {
+    visibilityMap[v.tile_id] = v.visibility;
+  });
+
+  const scoutedCount = visibility.filter((v) => v.visibility !== "unknown").length;
+
+  const ownershipMap: Record<string, { status: string; isMine: boolean }> = {};
+  ownership.forEach((o) => {
+    if (o.status !== "unclaimed") {
+      ownershipMap[o.tile_id] = {
+        status: o.status,
+        isMine: o.owner_realm_id === myRealmId,
+      };
+    }
+  });
 
   return (
     <div className="dashboard">
@@ -79,7 +103,7 @@ export default function WizardView({
         </div>
         <div className="stat-row">
           <span className="stat-row__label">Scoutede felter</span>
-          <span className="stat-row__value">{scoutedTiles.length}</span>
+          <span className="stat-row__value">{scoutedCount}</span>
         </div>
       </aside>
 
@@ -97,14 +121,7 @@ export default function WizardView({
         </nav>
 
         {activeTab === "Synskraft" && (
-          <div>
-            {scoutedTiles.map((t) => (
-              <div className="stat-row" key={t.coords}>
-                <span className="stat-row__label">{t.coords}</span>
-                <span className="stat-row__value">{t.note}</span>
-              </div>
-            ))}
-          </div>
+          <MapGrid tiles={tiles} visibility={visibilityMap} ownership={ownershipMap} />
         )}
 
         {activeTab === "Forbandelser" && (
