@@ -1,4 +1,6 @@
-// Path: app/dashboard/layout.tsx | Type: NEW
+// Path: app/dashboard/layout.tsx | Type: UPDATE
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 import { logout } from "../actions";
