@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 import { logout } from "../actions";
 import RoleSelector from "./role-selector";
+import ThemeShell from "./theme-shell";
 
 export default async function DashboardLayout({
   children,
@@ -32,7 +33,7 @@ export default async function DashboardLayout({
   }
 
   return (
-    <div className="dashboard-shell">
+    <ThemeShell>
       <header className="role-nav">
         <div className="role-nav__brand">{realm.name}</div>
         <RoleSelector />
@@ -46,6 +47,6 @@ export default async function DashboardLayout({
         </div>
       </header>
       {children}
-    </div>
+    </ThemeShell>
   );
 }
