@@ -1,4 +1,6 @@
 // Path: app/dashboard/wizard/page.tsx | Type: UPDATE
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { createClient } from "../../../lib/supabase/server";
 import WizardView from "./wizard-view";
