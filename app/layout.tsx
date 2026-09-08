@@ -1,6 +1,6 @@
-// Path: app/layout.tsx | Type: NEW
+// Path: app/layout.tsx | Type: UPDATE
 import type { Metadata } from "next";
-import { Cinzel, IBM_Plex_Sans } from "next/font/google";
+import { Cinzel, Crimson_Text } from "next/font/google";
 import "./globals.css";
 
 const cinzel = Cinzel({
@@ -9,10 +9,10 @@ const cinzel = Cinzel({
   variable: "--font-cinzel",
 });
 
-const plexSans = IBM_Plex_Sans({
+const crimsonText = Crimson_Text({
   subsets: ["latin"],
-  weight: ["400", "500", "600"],
-  variable: "--font-plex",
+  weight: ["400", "600", "700"],
+  variable: "--font-crimson",
 });
 
 export const metadata: Metadata = {
@@ -26,7 +26,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="da" className={`${cinzel.variable} ${plexSans.variable}`}>
+    <html lang="da" className={`${cinzel.variable} ${crimsonText.variable}`}>
       <body>{children}</body>
     </html>
   );
