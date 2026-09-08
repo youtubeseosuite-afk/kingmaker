@@ -1,4 +1,6 @@
 // Path: app/new-realm/page.tsx | Type: UPDATE
+export const dynamic = "force-dynamic";
+
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 import { createRealm } from "./actions";
