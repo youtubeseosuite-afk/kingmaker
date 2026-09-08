@@ -34,15 +34,23 @@ export default async function PriorPage() {
     .eq("role", "prior")
     .maybeSingle();
 
-  const { data: kingdomResources } = await supabase
-    .from("kingdom_resources")
-    .select("resource_code, amount")
-    .eq("realm_id", realm.id);
+  const { data: kingdomResources } = await supabase.rpc("get_kingdom_resources", {
+    p_realm_id: realm.id,
+  });
+
+  const { data: buildings } = roleProfile
+    ? await supabase
+        .from("buildings")
+        .select("building_type, level")
+        .eq("role_profile_id", roleProfile.id)
+    : { data: [] };
 
   return (
     <PriorView
       legitimacy={roleProfile?.legitimacy ?? 0}
+      roleProfileId={roleProfile?.id ?? null}
       kingdomResources={kingdomResources ?? []}
+      buildings={buildings ?? []}
     />
   );
 }
