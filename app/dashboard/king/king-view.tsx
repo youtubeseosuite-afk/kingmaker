@@ -6,7 +6,15 @@ import { useRouter } from "next/navigation";
 import { upgradeBuilding } from "./actions";
 
 type ResourceRow = { resource_code: string; amount: number };
-type BuildingRow = { building_type: "keep" | "walls"; level: number };
+type BuildingType =
+  | "keep"
+  | "walls"
+  | "storehouse"
+  | "barracks"
+  | "stable"
+  | "kitchen"
+  | "housing";
+type BuildingRow = { building_type: BuildingType; level: number };
 
 const resourceLabels: Record<string, string> = {
   gold: "Guld",
@@ -16,16 +24,41 @@ const resourceLabels: Record<string, string> = {
   stone: "Sten",
 };
 
-const buildingLabels: Record<string, string> = {
+const buildingOrder: BuildingType[] = [
+  "keep",
+  "walls",
+  "storehouse",
+  "barracks",
+  "stable",
+  "kitchen",
+  "housing",
+];
+
+const buildingLabels: Record<BuildingType, string> = {
   keep: "The Keep",
   walls: "Murene",
+  storehouse: "Lageret",
+  barracks: "Kasernen",
+  stable: "Stalden",
+  kitchen: "Køkkenet",
+  housing: "Almene Boliger",
+};
+
+const buildingDescriptions: Record<BuildingType, string> = {
+  keep: "Rigets administrative hjerte",
+  walls: "Forsvar mod belejring",
+  storehouse: "Hæver lagerkapaciteten for fælles ressourcer",
+  barracks: "Træn Fodfolk og Bueskytter",
+  stable: "Kræves for Kavaleri, øger marchhastighed",
+  kitchen: "Reducerer troppernes madforbrug",
+  housing: "Hæver hvor stor en garnison riget kan understøtte",
 };
 
 function amountFor(rows: ResourceRow[], code: string) {
   return rows.find((r) => r.resource_code === code)?.amount ?? 0;
 }
 
-function levelFor(buildings: BuildingRow[], type: "keep" | "walls") {
+function levelFor(buildings: BuildingRow[], type: BuildingType) {
   return buildings.find((b) => b.building_type === type)?.level ?? 1;
 }
 
@@ -79,7 +112,7 @@ export default function KingView({
     { code: "stone", value: stone },
   ];
 
-  function handleUpgrade(buildingType: "keep" | "walls") {
+  function handleUpgrade(buildingType: BuildingType) {
     if (!roleProfileId) return;
     setError(null);
     startTransition(async () => {
@@ -140,7 +173,7 @@ export default function KingView({
         {activeTab === "Slot" && (
           <div>
             {error && <p className="auth-message auth-message--error">{error}</p>}
-            {(["keep", "walls"] as const).map((type) => {
+            {buildingOrder.map((type) => {
               const level = levelFor(buildings, type);
               const cost = costFor(level);
               const maxed = level >= 30;
@@ -156,6 +189,15 @@ export default function KingView({
                       {maxed ? "Maks niveau" : `${cost.wood} træ · ${cost.stone} sten`}
                     </span>
                   </div>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-faint)",
+                      margin: "4px 0 6px",
+                    }}
+                  >
+                    {buildingDescriptions[type]}
+                  </p>
                   <div className="progress">
                     <div
                       className="progress__fill"
