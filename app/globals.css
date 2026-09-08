@@ -1,0 +1,342 @@
+// Path: app/globals.css | Type: NEW
+
+:root {
+  --bg-base: #121212;
+  --bg-panel: #1a1a2e;
+  --bg-panel-raised: #23233d;
+  --bg-input: #15152a;
+
+  --border: #34344a;
+  --border-strong: #4a4a68;
+
+  --accent-gold: #c5a059;
+  --accent-gold-bright: #ddb872;
+
+  --text-primary: #e9e4d8;
+  --text-secondary: #a3a3b8;
+  --text-faint: #6b6b85;
+
+  --danger: #8b2f3b;
+  --success: #5c8a5c;
+
+  --font-display: var(--font-cinzel), serif;
+  --font-body: var(--font-plex), sans-serif;
+
+  --radius: 3px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at top, rgba(197, 160, 89, 0.04), transparent 55%),
+    var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+}
+
+/* ---------- Layout ---------- */
+
+.dashboard {
+  display: grid;
+  grid-template-areas:
+    "topbar topbar topbar"
+    "left center right"
+    "bottom bottom bottom";
+  grid-template-columns: 250px 1fr 320px;
+  grid-template-rows: 60px 1fr 68px;
+  height: 100vh;
+  gap: 1px;
+  background: var(--border);
+}
+
+.topbar {
+  grid-area: topbar;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+}
+
+.panel-left {
+  grid-area: left;
+  background: var(--bg-panel);
+  padding: 20px 18px;
+  overflow-y: auto;
+}
+
+.panel-center {
+  grid-area: center;
+  background: var(--bg-base);
+  padding: 20px 24px;
+  overflow-y: auto;
+}
+
+.panel-right {
+  grid-area: right;
+  background: var(--bg-panel);
+  padding: 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-bottom {
+  grid-area: bottom;
+  background: var(--bg-panel);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 20px;
+}
+
+/* ---------- Typography ---------- */
+
+.crest-title {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--accent-gold);
+}
+
+.panel-title {
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-gold);
+  letter-spacing: 0.03em;
+  margin-bottom: 14px;
+}
+
+/* ---------- Resource pills (topbar) ---------- */
+
+.resource-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.resource-pill {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.resource-pill__label {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.resource-pill__value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.resource-pill--gold .resource-pill__value {
+  color: var(--accent-gold-bright);
+  font-weight: 600;
+}
+
+.realm-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-left: 1px solid var(--border);
+  padding-left: 18px;
+}
+
+.realm-badge__role {
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.realm-badge__name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+/* ---------- Stat rows (left panel) ---------- */
+
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.stat-row:last-child {
+  border-bottom: none;
+}
+
+.stat-row__label {
+  color: var(--text-secondary);
+}
+
+.stat-row__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+/* ---------- Tabs (center panel) ---------- */
+
+.tab-bar {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+
+.tab {
+  background: none;
+  border: none;
+  padding: 10px 16px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--text-faint);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.tab:hover {
+  color: var(--text-secondary);
+}
+
+.tab--active {
+  color: var(--accent-gold);
+  border-bottom-color: var(--accent-gold);
+}
+
+/* ---------- Build projects / progress bars ---------- */
+
+.build-project {
+  margin-bottom: 18px;
+}
+
+.build-project__head {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.build-project__name {
+  color: var(--text-primary);
+}
+
+.build-project__eta {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.progress {
+  height: 6px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.progress__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-gold), var(--accent-gold-bright));
+  transition: width 0.4s ease;
+}
+
+.placeholder-note {
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 40px 0;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* ---------- Event feed (right panel) ---------- */
+
+.feed-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+}
+
+.feed-item {
+  padding: 10px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 12.5px;
+}
+
+.feed-item:last-child {
+  border-bottom: none;
+}
+
+.feed-item__time {
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  margin-right: 8px;
+}
+
+.feed-item__text {
+  color: var(--text-secondary);
+}
+
+/* ---------- Command bar (bottom) ---------- */
+
+.command-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 12px;
+  color: var(--text-primary);
+  transition: border-color 0.15s ease;
+}
+
+.command-input::placeholder {
+  color: var(--text-faint);
+}
+
+.command-input:focus {
+  outline: none;
+  border-color: var(--accent-gold);
+}
+
+.btn {
+  background: var(--bg-panel-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 9px 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.btn:hover {
+  border-color: var(--accent-gold);
+  color: var(--accent-gold-bright);
+}
