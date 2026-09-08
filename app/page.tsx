@@ -13,5 +13,16 @@ export default async function HomePage() {
     redirect("/login");
   }
 
+  const { data: realm } = await supabase
+    .from("realms")
+    .select("id")
+    .eq("player_id", user.id)
+    .limit(1)
+    .maybeSingle();
+
+  if (!realm) {
+    redirect("/new-realm");
+  }
+
   return <DashboardView email={user.email ?? ""} />;
 }
