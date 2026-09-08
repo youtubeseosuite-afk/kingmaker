@@ -1,5 +1,5 @@
-// Path: app/page.tsx | Type: NEW
 "use client";
+// Path: app/page.tsx | Type: UPDATE
 
 import { useState } from "react";
 
