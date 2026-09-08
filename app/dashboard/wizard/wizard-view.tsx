@@ -1,8 +1,10 @@
 "use client";
 // Path: app/dashboard/wizard/wizard-view.tsx | Type: UPDATE
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import MapGrid from "../map-grid";
+import { scoutTile } from "./actions";
 
 type ResourceRow = { resource_code: string; amount: number };
 type Tile = { id: string; x: number; y: number; terrain: string };
@@ -52,6 +54,15 @@ export default function WizardView({
   myRealmId: string;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Synskraft");
+  const router = useRouter();
+  const [, startTransition] = useTransition();
+
+  function handleTileClick(tileId: string) {
+    startTransition(async () => {
+      await scoutTile(tileId);
+      router.refresh();
+    });
+  }
 
   const resources = [
     { code: "crystal", value: amountFor(roleResources, "crystal"), gold: true },
@@ -121,7 +132,12 @@ export default function WizardView({
         </nav>
 
         {activeTab === "Synskraft" && (
-          <MapGrid tiles={tiles} visibility={visibilityMap} ownership={ownershipMap} />
+          <MapGrid
+            tiles={tiles}
+            visibility={visibilityMap}
+            ownership={ownershipMap}
+            onTileClick={handleTileClick}
+          />
         )}
 
         {activeTab === "Forbandelser" && (
