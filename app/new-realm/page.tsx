@@ -1,4 +1,4 @@
-// Path: app/new-realm/page.tsx | Type: NEW
+// Path: app/new-realm/page.tsx | Type: UPDATE
 import { redirect } from "next/navigation";
 import { createClient } from "../../lib/supabase/server";
 import { createRealm } from "./actions";
@@ -27,7 +27,7 @@ export default async function NewRealmPage({
     .maybeSingle();
 
   if (existingRealm) {
-    redirect("/");
+    redirect("/dashboard/king");
   }
 
   const { data: worlds } = await supabase
@@ -40,7 +40,9 @@ export default async function NewRealmPage({
     <div className="auth-screen">
       <div className="auth-card">
         <div className="crest-title auth-card__title">Grundlæg dit rige</div>
-        <p className="auth-card__subtitle">Vælg verden og rolle</p>
+        <p className="auth-card__subtitle">
+          Du styrer alle fire roller — Kongen, Købmanden, Troldmanden og Prioren
+        </p>
 
         {params.error && (
           <p className="auth-message auth-message--error">{params.error}</p>
@@ -69,16 +71,6 @@ export default async function NewRealmPage({
                 {w.name}
               </option>
             ))}
-          </select>
-
-          <label className="auth-form__label" htmlFor="role">
-            Rolle
-          </label>
-          <select className="command-input" id="role" name="role" required>
-            <option value="king">Kongen</option>
-            <option value="merchant">Købmanden</option>
-            <option value="wizard">Troldmanden</option>
-            <option value="prior">Prioren</option>
           </select>
 
           <label className="auth-form__label" htmlFor="name">
