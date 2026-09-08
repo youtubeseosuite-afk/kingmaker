@@ -29,10 +29,12 @@ export default function MapGrid({
   tiles,
   visibility,
   ownership,
+  onTileClick,
 }: {
   tiles: Tile[];
   visibility: Record<string, VisibilityState>;
   ownership: Record<string, { status: string; isMine: boolean }>;
+  onTileClick?: (tileId: string) => void;
 }) {
   const maxX = tiles.reduce((m, t) => Math.max(m, t.x), 0);
   const maxY = tiles.reduce((m, t) => Math.max(m, t.y), 0);
@@ -65,6 +67,8 @@ export default function MapGrid({
             opacity={opacity}
             stroke={own ? (own.isMine ? "#c5a059" : "#8b2f3b") : "transparent"}
             strokeWidth={own ? 2 : 0}
+            onClick={onTileClick ? () => onTileClick(tile.id) : undefined}
+            style={{ cursor: onTileClick ? "pointer" : "default" }}
           >
             <title>
               ({tile.x}, {tile.y}) —{" "}
