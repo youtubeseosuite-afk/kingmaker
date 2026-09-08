@@ -16,7 +16,7 @@ export default async function MerchantPage() {
 
   const { data: realm } = await supabase
     .from("realms")
-    .select("id")
+    .select("id, world_id")
     .eq("player_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -32,20 +32,28 @@ export default async function MerchantPage() {
     .eq("role", "merchant")
     .maybeSingle();
 
-  const { data: kingdomResources } = await supabase
-    .from("kingdom_resources")
-    .select("resource_code, amount")
-    .eq("realm_id", realm.id);
+  const { data: kingProfile } = await supabase
+    .from("role_profiles")
+    .select("id")
+    .eq("realm_id", realm.id)
+    .eq("role", "king")
+    .maybeSingle();
+
+  const { data: kingdomResources } = await supabase.rpc("get_kingdom_resources", {
+    p_realm_id: realm.id,
+  });
 
   const { data: roleResources } = roleProfile
-    ? await supabase
-        .from("role_resources")
-        .select("resource_code, amount")
-        .eq("role_profile_id", roleProfile.id)
+    ? await supabase.rpc("get_role_resources", {
+        p_role_profile_id: roleProfile.id,
+      })
     : { data: [] };
 
   return (
     <MerchantView
+      worldId={realm.world_id}
+      roleProfileId={roleProfile?.id ?? null}
+      kingRoleProfileId={kingProfile?.id ?? null}
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
     />
