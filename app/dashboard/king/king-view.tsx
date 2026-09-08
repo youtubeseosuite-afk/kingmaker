@@ -83,11 +83,11 @@ export default function KingView({
     if (!roleProfileId) return;
     setError(null);
     startTransition(async () => {
-      try {
-        await upgradeBuilding(roleProfileId, buildingType);
+      const result = await upgradeBuilding(roleProfileId, buildingType);
+      if (result.error) {
+        setError(result.error);
+      } else {
         router.refresh();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "Opgradering fejlede");
       }
     });
   }
