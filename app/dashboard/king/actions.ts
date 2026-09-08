@@ -5,7 +5,14 @@ import { createClient } from "../../../lib/supabase/server";
 
 export async function upgradeBuilding(
   roleProfileId: string,
-  buildingType: "keep" | "walls"
+  buildingType:
+    | "keep"
+    | "walls"
+    | "storehouse"
+    | "barracks"
+    | "stable"
+    | "kitchen"
+    | "housing"
 ): Promise<{ error?: string; level?: number }> {
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("upgrade_building", {
