@@ -1,7 +1,6 @@
 // Path: app/page.tsx | Type: UPDATE
 import { redirect } from "next/navigation";
 import { createClient } from "../lib/supabase/server";
-import DashboardView from "./dashboard-view";
 
 export default async function HomePage() {
   const supabase = await createClient();
@@ -24,5 +23,5 @@ export default async function HomePage() {
     redirect("/new-realm");
   }
 
-  return <DashboardView email={user.email ?? ""} />;
+  redirect("/dashboard/king");
 }
