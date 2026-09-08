@@ -16,7 +16,7 @@ export default async function WizardPage() {
 
   const { data: realm } = await supabase
     .from("realms")
-    .select("id")
+    .select("id, world_id")
     .eq("player_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -44,11 +44,36 @@ export default async function WizardPage() {
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
+  const { data: tiles } = await supabase
+    .from("tiles")
+    .select("id, x, y, terrain")
+    .eq("world_id", realm.world_id)
+    .lt("x", 20)
+    .lt("y", 20);
+
+  const { data: visibility } = await supabase
+    .from("realm_tile_visibility")
+    .select("tile_id, visibility")
+    .eq("realm_id", realm.id);
+
+  const tileIds = (tiles ?? []).map((t) => t.id);
+  const { data: ownership } =
+    tileIds.length > 0
+      ? await supabase
+          .from("tile_ownership")
+          .select("tile_id, status, owner_realm_id")
+          .in("tile_id", tileIds)
+      : { data: [] };
+
   return (
     <WizardView
       sight={roleProfile?.sight ?? 0}
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
+      tiles={tiles ?? []}
+      visibility={visibility ?? []}
+      ownership={ownership ?? []}
+      myRealmId={realm.id}
     />
   );
 }
