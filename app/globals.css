@@ -1,28 +1,81 @@
 /* Path: app/globals.css | Type: UPDATE */
+/* Grimdark War Room — dark oak table, parchment documents, per-role wax-seal identity */
 
 :root {
-  --bg-base: #121212;
-  --bg-panel: #1a1a2e;
-  --bg-panel-raised: #23233d;
-  --bg-input: #15152a;
+  /* The table — the room itself */
+  --table-dark: #140d07;
+  --table-mid: #241708;
 
-  --border: #34344a;
-  --border-strong: #4a4a68;
+  /* Parchment — every document resting on the table */
+  --parchment-light: #eee3c8;
+  --parchment-mid: #ddcda0;
+  --parchment-dark: #c9b781;
+  --parchment-edge: rgba(101, 74, 39, 0.5);
 
-  --accent-gold: #c5a059;
-  --accent-gold-bright: #ddb872;
+  /* Ink — text written on parchment */
+  --ink: #2b2116;
+  --ink-secondary: #5b4d38;
+  --ink-faint: #8a7a5c;
 
-  --text-primary: #e9e4d8;
-  --text-secondary: #a3a3b8;
-  --text-faint: #6b6b85;
+  /* Text painted directly on the table (role-nav banner only) */
+  --parch-on-dark: #e8ddc0;
+  --parch-on-dark-faint: #a08e68;
 
-  --danger: #8b2f3b;
-  --success: #5c8a5c;
+  --border-gold: rgba(197, 160, 89, 0.6);
+
+  --danger: #7a2430;
+  --danger-bright: #a8394a;
+  --success: #3f6b3f;
 
   --font-display: var(--font-cinzel), serif;
-  --font-body: var(--font-plex), sans-serif;
+  --font-body: var(--font-crimson), serif;
 
   --radius: 3px;
+
+  /* Role identity — default gold (used pre-game, on auth/onboarding) */
+  --role-accent: #c5a059;
+  --role-accent-bright: #e0c078;
+  --role-secondary: #8f7a4a;
+
+  /* Legacy aliases — kept so every existing component and inline
+     var(--...) reference (several dashboard views set inline colors
+     directly) resolves correctly under the new palette without
+     needing to touch those files. */
+  --bg-base: var(--table-dark);
+  --bg-panel: var(--parchment-light);
+  --bg-panel-raised: var(--parchment-mid);
+  --bg-input: var(--parchment-dark);
+  --border: var(--parchment-edge);
+  --border-strong: var(--border-gold);
+  --text-primary: var(--ink);
+  --text-secondary: var(--ink-secondary);
+  --text-faint: var(--ink-faint);
+  --accent-gold: var(--role-accent);
+  --accent-gold-bright: var(--role-accent-bright);
+}
+
+[data-role="king"] {
+  --role-accent: #9e2a2a;
+  --role-accent-bright: #c94b4b;
+  --role-secondary: #5a5a63;
+}
+
+[data-role="merchant"] {
+  --role-accent: #b5651d;
+  --role-accent-bright: #d68a3d;
+  --role-secondary: #4a6741;
+}
+
+[data-role="wizard"] {
+  --role-accent: #6b3fa0;
+  --role-accent-bright: #9163c9;
+  --role-secondary: #3d2659;
+}
+
+[data-role="prior"] {
+  --role-accent: #c5a059;
+  --role-accent-bright: #e0c078;
+  --role-secondary: #8f7a4a;
 }
 
 * {
@@ -38,12 +91,19 @@ body {
 
 body {
   background:
-    radial-gradient(ellipse at top, rgba(197, 160, 89, 0.04), transparent 55%),
-    var(--bg-base);
-  color: var(--text-primary);
+    repeating-linear-gradient(
+      100deg,
+      rgba(0, 0, 0, 0.12) 0px,
+      rgba(0, 0, 0, 0.12) 1px,
+      transparent 1px,
+      transparent 70px
+    ),
+    radial-gradient(ellipse at 50% 30%, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55) 100%),
+    linear-gradient(160deg, #2c1c0f, #1a1108 55%, #110b05);
+  color: var(--ink);
   font-family: var(--font-body);
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -52,6 +112,40 @@ input {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
+}
+
+/* ---------- Shared parchment texture ---------- */
+
+.dashboard,
+.topbar,
+.panel-left,
+.panel-center,
+.panel-right,
+.panel-bottom,
+.auth-card {
+  background:
+    radial-gradient(ellipse at 15% 15%, rgba(120, 90, 40, 0.12), transparent 45%),
+    radial-gradient(ellipse at 85% 80%, rgba(90, 65, 30, 0.1), transparent 50%),
+    repeating-linear-gradient(
+      178deg,
+      rgba(0, 0, 0, 0.025) 0px,
+      rgba(0, 0, 0, 0.025) 1px,
+      transparent 1px,
+      transparent 3px
+    ),
+    linear-gradient(155deg, var(--parchment-light) 0%, var(--parchment-mid) 55%, var(--parchment-dark) 100%);
+}
+
+.topbar,
+.panel-left,
+.panel-center,
+.panel-right,
+.panel-bottom,
+.auth-card {
+  clip-path: polygon(
+    0% 1.5%, 1% 0%, 99% 0.5%, 100% 2%,
+    100% 98%, 99% 100%, 1% 99.5%, 0% 97.5%
+  );
 }
 
 /* ---------- Layout ---------- */
@@ -65,18 +159,28 @@ input {
 .role-nav {
   flex: 0 0 auto;
   height: 48px;
-  background: var(--bg-panel);
-  border-bottom: 1px solid var(--border);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.15) 0px,
+      rgba(0, 0, 0, 0.15) 1px,
+      transparent 1px,
+      transparent 40px
+    ),
+    linear-gradient(180deg, #2a1c10, #1a1109);
+  border-bottom: 2px solid var(--role-accent);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 18px;
+  transition: border-color 0.4s ease;
 }
 
 .role-nav__brand {
   font-family: var(--font-display);
   font-size: 14px;
-  color: var(--accent-gold);
+  color: var(--parch-on-dark);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .role-nav__tabs {
@@ -87,20 +191,20 @@ input {
 .role-nav__tab {
   font-family: var(--font-display);
   font-size: 12.5px;
-  color: var(--text-faint);
+  color: var(--parch-on-dark-faint);
   text-decoration: none;
   padding: 8px 14px;
   border-bottom: 2px solid transparent;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.3s ease, border-color 0.4s ease;
 }
 
 .role-nav__tab:hover {
-  color: var(--text-secondary);
+  color: var(--parch-on-dark);
 }
 
 .role-nav__tab--active {
-  color: var(--accent-gold);
-  border-bottom-color: var(--accent-gold);
+  color: var(--role-accent-bright);
+  border-bottom-color: var(--role-accent);
 }
 
 .role-nav__account {
@@ -111,7 +215,7 @@ input {
 
 .role-nav__email {
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--parch-on-dark-faint);
 }
 
 .dashboard {
@@ -124,13 +228,13 @@ input {
   grid-template-rows: 60px 1fr 68px;
   flex: 1 1 auto;
   min-height: 0;
-  gap: 1px;
-  background: var(--border);
+  gap: 4px;
+  background: var(--table-mid);
+  padding: 4px;
 }
 
 .topbar {
   grid-area: topbar;
-  background: var(--bg-panel);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -139,21 +243,18 @@ input {
 
 .panel-left {
   grid-area: left;
-  background: var(--bg-panel);
   padding: 20px 18px;
   overflow-y: auto;
 }
 
 .panel-center {
   grid-area: center;
-  background: var(--bg-base);
   padding: 20px 24px;
   overflow-y: auto;
 }
 
 .panel-right {
   grid-area: right;
-  background: var(--bg-panel);
   padding: 18px;
   overflow-y: auto;
   display: flex;
@@ -162,7 +263,6 @@ input {
 
 .panel-bottom {
   grid-area: bottom;
-  background: var(--bg-panel);
   display: flex;
   align-items: center;
   gap: 12px;
@@ -175,16 +275,34 @@ input {
   font-family: var(--font-display);
   font-weight: 600;
   letter-spacing: 0.02em;
-  color: var(--accent-gold);
+  color: var(--role-accent);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+  transition: color 0.4s ease;
 }
 
 .panel-title {
+  position: relative;
   font-family: var(--font-display);
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent-gold);
-  letter-spacing: 0.03em;
+  color: var(--ink);
+  letter-spacing: 0.02em;
   margin-bottom: 14px;
+  padding-left: 26px;
+}
+
+.panel-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--role-accent-bright), var(--role-accent) 55%, rgba(0, 0, 0, 0.4) 100%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 0 3px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  transition: background 0.4s ease;
 }
 
 /* ---------- Resource pills (topbar) ---------- */
@@ -203,37 +321,38 @@ input {
 
 .resource-pill__label {
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--ink-faint);
 }
 
 .resource-pill__value {
   font-variant-numeric: tabular-nums;
-  font-weight: 500;
-  color: var(--text-primary);
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .resource-pill--gold .resource-pill__value {
-  color: var(--accent-gold-bright);
-  font-weight: 600;
+  color: var(--role-accent);
+  font-weight: 700;
+  transition: color 0.4s ease;
 }
 
 .realm-badge {
   display: flex;
   align-items: center;
   gap: 10px;
-  border-left: 1px solid var(--border);
+  border-left: 1px solid var(--parchment-edge);
   padding-left: 18px;
 }
 
 .realm-badge__role {
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--ink-faint);
 }
 
 .realm-badge__name {
   font-family: var(--font-display);
   font-size: 14px;
-  color: var(--text-primary);
+  color: var(--ink);
 }
 
 /* ---------- Stat rows (left panel) ---------- */
@@ -242,7 +361,7 @@ input {
   display: flex;
   justify-content: space-between;
   padding: 9px 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--parchment-edge);
   font-size: 13px;
 }
 
@@ -251,12 +370,13 @@ input {
 }
 
 .stat-row__label {
-  color: var(--text-secondary);
+  color: var(--ink-secondary);
 }
 
 .stat-row__value {
   font-variant-numeric: tabular-nums;
-  color: var(--text-primary);
+  color: var(--ink);
+  font-weight: 600;
 }
 
 /* ---------- Tabs (center panel) ---------- */
@@ -264,7 +384,7 @@ input {
 .tab-bar {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--parchment-edge);
   margin-bottom: 20px;
 }
 
@@ -274,25 +394,30 @@ input {
   padding: 10px 16px;
   font-family: var(--font-display);
   font-size: 13px;
-  color: var(--text-faint);
+  color: var(--ink-faint);
   cursor: pointer;
   border-bottom: 2px solid transparent;
-  transition: color 0.15s ease, border-color 0.15s ease;
+  transition: color 0.2s ease, border-color 0.3s ease;
 }
 
 .tab:hover {
-  color: var(--text-secondary);
+  color: var(--ink-secondary);
 }
 
 .tab--active {
-  color: var(--accent-gold);
-  border-bottom-color: var(--accent-gold);
+  color: var(--role-accent);
+  border-bottom-color: var(--role-accent);
 }
 
 /* ---------- Build projects / progress bars ---------- */
 
 .build-project {
-  margin-bottom: 18px;
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid var(--border-gold);
+  border-radius: 2px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
 .build-project__head {
@@ -303,34 +428,35 @@ input {
 }
 
 .build-project__name {
-  color: var(--text-primary);
+  color: var(--ink);
+  font-weight: 600;
 }
 
 .build-project__eta {
-  color: var(--text-faint);
+  color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
 }
 
 .progress {
   height: 6px;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
+  background: var(--parchment-dark);
+  border: 1px solid var(--parchment-edge);
   border-radius: var(--radius);
   overflow: hidden;
 }
 
 .progress__fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-gold), var(--accent-gold-bright));
-  transition: width 0.4s ease;
+  background: linear-gradient(90deg, var(--role-accent), var(--role-accent-bright));
+  transition: width 0.4s ease, background 0.4s ease;
 }
 
 .placeholder-note {
-  color: var(--text-faint);
+  color: var(--ink-faint);
   font-size: 13px;
   padding: 40px 0;
   text-align: center;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--parchment-edge);
   border-radius: var(--radius);
 }
 
@@ -345,7 +471,7 @@ input {
 
 .feed-item {
   padding: 10px 4px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--parchment-edge);
   font-size: 12.5px;
 }
 
@@ -354,62 +480,63 @@ input {
 }
 
 .feed-item__time {
-  color: var(--text-faint);
+  color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
   margin-right: 8px;
 }
 
 .feed-item__text {
-  color: var(--text-secondary);
+  color: var(--ink-secondary);
 }
 
 /* ---------- Command bar (bottom) ---------- */
 
 .command-input {
   flex: 1;
-  background: var(--bg-input);
-  border: 1px solid var(--border);
+  background: var(--parchment-dark);
+  border: 1px solid var(--parchment-edge);
   border-radius: var(--radius);
   padding: 9px 12px;
-  color: var(--text-primary);
-  transition: border-color 0.15s ease;
+  color: var(--ink);
+  transition: border-color 0.2s ease;
 }
 
 .command-input::placeholder {
-  color: var(--text-faint);
+  color: var(--ink-faint);
 }
 
 .command-input:focus {
   outline: none;
-  border-color: var(--accent-gold);
+  border-color: var(--role-accent);
 }
 
 .btn {
-  background: var(--bg-panel-raised);
-  border: 1px solid var(--border);
+  background: var(--parchment-mid);
+  border: 1px solid var(--parchment-edge);
   border-radius: var(--radius);
   padding: 9px 14px;
-  color: var(--text-secondary);
+  color: var(--ink-secondary);
   cursor: pointer;
   white-space: nowrap;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: border-color 0.2s ease, color 0.2s ease;
 }
 
 .btn:hover {
-  border-color: var(--accent-gold);
-  color: var(--accent-gold-bright);
+  border-color: var(--role-accent);
+  color: var(--role-accent);
 }
 
 .btn--primary {
-  background: var(--accent-gold);
-  border-color: var(--accent-gold);
+  background: var(--role-accent);
+  border-color: var(--role-accent);
   color: #1a1408;
   font-weight: 600;
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .btn--primary:hover {
-  background: var(--accent-gold-bright);
-  border-color: var(--accent-gold-bright);
+  background: var(--role-accent-bright);
+  border-color: var(--role-accent-bright);
   color: #1a1408;
 }
 
@@ -421,18 +548,24 @@ input {
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(ellipse at top, rgba(197, 160, 89, 0.06), transparent 55%),
-    var(--bg-base);
+    repeating-linear-gradient(
+      100deg,
+      rgba(0, 0, 0, 0.12) 0px,
+      rgba(0, 0, 0, 0.12) 1px,
+      transparent 1px,
+      transparent 70px
+    ),
+    radial-gradient(ellipse at 50% 30%, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.55) 100%),
+    linear-gradient(160deg, #2c1c0f, #1a1108 55%, #110b05);
   padding: 20px;
 }
 
 .auth-card {
   width: 100%;
   max-width: 360px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--border-gold);
   padding: 32px 28px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
 }
 
 .auth-card__title {
@@ -441,7 +574,7 @@ input {
 }
 
 .auth-card__subtitle {
-  color: var(--text-faint);
+  color: var(--ink-faint);
   font-size: 13px;
   text-align: center;
   margin-top: 6px;
@@ -455,7 +588,7 @@ input {
 }
 
 .auth-form__label {
-  color: var(--text-secondary);
+  color: var(--ink-secondary);
   font-size: 12px;
   margin-top: 10px;
 }
@@ -476,17 +609,19 @@ input {
   padding: 8px 10px;
   border-radius: var(--radius);
   margin-bottom: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--parchment-edge);
 }
 
 .auth-message--error {
-  color: #e0929c;
+  color: var(--danger);
   border-color: var(--danger);
-  background: rgba(139, 47, 59, 0.15);
+  background: rgba(122, 36, 48, 0.12);
+  font-weight: 600;
 }
 
 .auth-message--success {
-  color: #a8caa8;
+  color: var(--success);
   border-color: var(--success);
-  background: rgba(92, 138, 92, 0.15);
+  background: rgba(63, 107, 63, 0.12);
+  font-weight: 600;
 }
