@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import MapGrid from "../map-grid";
 import { scoutTile, upgradeBuilding, type WizardBuildingType } from "./actions";
+import SkillsPanel from "../skills-panel";
 
 type ResourceRow = { resource_code: string; amount: number };
 type Tile = { id: string; x: number; y: number; terrain: string };
@@ -59,12 +60,23 @@ const events = [
 
 const quickActions = ["Send spejder", "Kast forbandelse", "Læs tegn"];
 
-const tabs = ["Synskraft", "Forbandelser", "Indsigt"] as const;
+type Skill = {
+  skill_code: string;
+  skill_name: string;
+  description: string;
+  min_level: number;
+  cost: Record<string, number>;
+  target_type: "tile" | "realm" | "role_profile" | "army_movement";
+  offensive: boolean;
+};
+
+const tabs = ["Synskraft", "Forbandelser", "Indsigt", "Evner"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function WizardView({
   sight,
   roleProfileId,
+  level,
   kingdomResources,
   roleResources,
   tiles,
@@ -72,9 +84,12 @@ export default function WizardView({
   ownership,
   myRealmId,
   buildings,
+  skills,
+  unlockedCodes,
 }: {
   sight: number;
   roleProfileId: string | null;
+  level: number;
   kingdomResources: ResourceRow[];
   roleResources: ResourceRow[];
   tiles: Tile[];
@@ -82,6 +97,8 @@ export default function WizardView({
   ownership: OwnershipRow[];
   myRealmId: string;
   buildings: BuildingRow[];
+  skills: Skill[];
+  unlockedCodes: string[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Synskraft");
   const [scoutError, setScoutError] = useState<string | null>(null);
@@ -250,6 +267,16 @@ export default function WizardView({
               );
             })}
           </div>
+        )}
+
+        {activeTab === "Evner" && roleProfileId && (
+          <SkillsPanel
+            roleProfileId={roleProfileId}
+            level={level}
+            skills={skills}
+            unlockedCodes={unlockedCodes}
+            resolveTarget={{ realm: myRealmId }}
+          />
         )}
       </main>
 
