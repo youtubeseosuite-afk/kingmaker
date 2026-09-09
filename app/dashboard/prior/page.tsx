@@ -29,9 +29,16 @@ export default async function PriorPage() {
 
   const { data: roleProfile } = await supabase
     .from("role_profiles")
-    .select("id, legitimacy")
+    .select("id, legitimacy, level")
     .eq("realm_id", realm.id)
     .eq("role", "prior")
+    .maybeSingle();
+
+  const { data: kingProfile } = await supabase
+    .from("role_profiles")
+    .select("id")
+    .eq("realm_id", realm.id)
+    .eq("role", "king")
     .maybeSingle();
 
   const { data: kingdomResources } = await supabase.rpc("get_kingdom_resources", {
@@ -45,12 +52,30 @@ export default async function PriorPage() {
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
+  const { data: skills } = await supabase
+    .from("role_skills")
+    .select("skill_code, skill_name, description, min_level, cost, target_type, offensive")
+    .eq("role", "prior")
+    .order("min_level");
+
+  const { data: unlocks } = roleProfile
+    ? await supabase
+        .from("role_skill_unlocks")
+        .select("skill_code")
+        .eq("role_profile_id", roleProfile.id)
+    : { data: [] };
+
   return (
     <PriorView
       legitimacy={roleProfile?.legitimacy ?? 0}
       roleProfileId={roleProfile?.id ?? null}
+      level={roleProfile?.level ?? 1}
       kingdomResources={kingdomResources ?? []}
       buildings={buildings ?? []}
+      skills={skills ?? []}
+      unlockedCodes={(unlocks ?? []).map((u) => u.skill_code)}
+      realmId={realm.id}
+      kingRoleProfileId={kingProfile?.id ?? null}
     />
   );
 }
