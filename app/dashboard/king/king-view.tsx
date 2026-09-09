@@ -4,6 +4,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upgradeBuilding } from "./actions";
+import SkillsPanel from "../skills-panel";
 
 type ResourceRow = { resource_code: string; amount: number };
 type BuildingType =
@@ -80,21 +81,39 @@ const events = [
 
 const quickActions = ["Træn tropper", "Kald til våben"];
 
-const tabs = ["Slot", "Hær", "Land"] as const;
+type Skill = {
+  skill_code: string;
+  skill_name: string;
+  description: string;
+  min_level: number;
+  cost: Record<string, number>;
+  target_type: "tile" | "realm" | "role_profile" | "army_movement";
+  offensive: boolean;
+};
+
+const tabs = ["Slot", "Hær", "Land", "Evner"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function KingView({
   legitimacy,
   roleProfileId,
+  level,
   kingdomResources,
   roleResources,
   buildings,
+  skills,
+  unlockedCodes,
+  realmId,
 }: {
   legitimacy: number;
   roleProfileId: string | null;
+  level: number;
   kingdomResources: ResourceRow[];
   roleResources: ResourceRow[];
   buildings: BuildingRow[];
+  skills: Skill[];
+  unlockedCodes: string[];
+  realmId: string;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Slot");
   const [error, setError] = useState<string | null>(null);
@@ -235,6 +254,16 @@ export default function KingView({
           <div className="placeholder-note">
             Kortet forbindes når koordinat-gridet er hentet fra Supabase.
           </div>
+        )}
+
+        {activeTab === "Evner" && roleProfileId && (
+          <SkillsPanel
+            roleProfileId={roleProfileId}
+            level={level}
+            skills={skills}
+            unlockedCodes={unlockedCodes}
+            resolveTarget={{ realm: realmId }}
+          />
         )}
       </main>
 
