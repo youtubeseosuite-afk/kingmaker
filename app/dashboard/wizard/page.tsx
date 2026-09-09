@@ -29,21 +29,19 @@ export default async function WizardPage() {
 
   const { data: roleProfile } = await supabase
     .from("role_profiles")
-    .select("id, sight")
+    .select("id, sight, level")
     .eq("realm_id", realm.id)
     .eq("role", "wizard")
     .maybeSingle();
 
-  const { data: kingdomResources } = await supabase
-    .from("kingdom_resources")
-    .select("resource_code, amount")
-    .eq("realm_id", realm.id);
+  const { data: kingdomResources } = await supabase.rpc("get_kingdom_resources", {
+    p_realm_id: realm.id,
+  });
 
   const { data: roleResources } = roleProfile
-    ? await supabase
-        .from("role_resources")
-        .select("resource_code, amount")
-        .eq("role_profile_id", roleProfile.id)
+    ? await supabase.rpc("get_role_resources", {
+        p_role_profile_id: roleProfile.id,
+      })
     : { data: [] };
 
   const { data: tiles } = await supabase
@@ -74,10 +72,24 @@ export default async function WizardPage() {
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
+  const { data: skills } = await supabase
+    .from("role_skills")
+    .select("skill_code, skill_name, description, min_level, cost, target_type, offensive")
+    .eq("role", "wizard")
+    .order("min_level");
+
+  const { data: unlocks } = roleProfile
+    ? await supabase
+        .from("role_skill_unlocks")
+        .select("skill_code")
+        .eq("role_profile_id", roleProfile.id)
+    : { data: [] };
+
   return (
     <WizardView
       sight={roleProfile?.sight ?? 0}
       roleProfileId={roleProfile?.id ?? null}
+      level={roleProfile?.level ?? 1}
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
       tiles={tiles ?? []}
@@ -85,6 +97,8 @@ export default async function WizardPage() {
       ownership={ownership ?? []}
       myRealmId={realm.id}
       buildings={buildings ?? []}
+      skills={skills ?? []}
+      unlockedCodes={(unlocks ?? []).map((u) => u.skill_code)}
     />
   );
 }
