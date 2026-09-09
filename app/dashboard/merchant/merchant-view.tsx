@@ -3,9 +3,11 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { sendGoldToKing } from "./actions";
+import { sendGoldToKing, upgradeBuilding, type MerchantBuildingType } from "./actions";
+import SkillsPanel from "../skills-panel";
 
 type ResourceRow = { resource_code: string; amount: number };
+type BuildingRow = { building_type: MerchantBuildingType; level: number };
 
 const resourceLabels: Record<string, string> = {
   gold: "Guld",
@@ -14,14 +16,44 @@ const resourceLabels: Record<string, string> = {
   stone: "Sten",
 };
 
+const buildingOrder: MerchantBuildingType[] = [
+  "marketplace",
+  "brewery",
+  "weaver",
+  "goldsmith",
+  "warehouse",
+  "caravan_post",
+];
+
+const buildingLabels: Record<MerchantBuildingType, string> = {
+  marketplace: "Markedspladsen",
+  brewery: "Bryggeriet",
+  weaver: "Vævestuen",
+  goldsmith: "Guldsmedjen",
+  warehouse: "Pakhuset",
+  caravan_post: "Karavaneposten",
+};
+
+const buildingDescriptions: Record<MerchantBuildingType, string> = {
+  marketplace: "Handelshusets base — åbner markedet for alvor",
+  brewery: "Omsætter Mad og Træ til Øl",
+  weaver: "Omsætter Træ til Klæde",
+  goldsmith: "Omsætter Guld og Krystal til Smykker",
+  warehouse: "Hæver lagerkapaciteten for Guld",
+  caravan_post: "Åbner og fremskynder handelsruter",
+};
+
 function amountFor(rows: ResourceRow[], code: string) {
   return rows.find((r) => r.resource_code === code)?.amount ?? 0;
 }
 
-const producers = [
-  { name: "Bryggeri — niveau 2", progress: 44, eta: "1t 50m" },
-  { name: "Vævestue — niveau 1", progress: 80, eta: "0t 20m" },
-];
+function levelFor(buildings: BuildingRow[], type: MerchantBuildingType) {
+  return buildings.find((b) => b.building_type === type)?.level ?? 1;
+}
+
+function costFor(level: number) {
+  return { wood: 50 * level, stone: 40 * level };
+}
 
 const trades = [
   { name: "Guldsmed", output: "Smykker", status: "Aktiv" },
@@ -36,30 +68,54 @@ const events = [
 
 const quickActions = ["Send karavane", "Åbn markedet"];
 
-const tabs = ["Handel", "Produktion", "Ruter"] as const;
+type Skill = {
+  skill_code: string;
+  skill_name: string;
+  description: string;
+  min_level: number;
+  cost: Record<string, number>;
+  target_type: "tile" | "realm" | "role_profile" | "army_movement";
+  offensive: boolean;
+};
+
+const tabs = ["Handel", "Produktion", "Ruter", "Evner"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function MerchantView({
   worldId,
   roleProfileId,
+  level,
   kingRoleProfileId,
   kingdomResources,
   roleResources,
+  buildings,
+  skills,
+  unlockedCodes,
+  realmId,
 }: {
   worldId: string;
   roleProfileId: string | null;
+  level: number;
   kingRoleProfileId: string | null;
   kingdomResources: ResourceRow[];
   roleResources: ResourceRow[];
+  buildings: BuildingRow[];
+  skills: Skill[];
+  unlockedCodes: string[];
+  realmId: string;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Handel");
   const [amount, setAmount] = useState("100");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [buildError, setBuildError] = useState<string | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isBuildPending, startBuildTransition] = useTransition();
 
   const gold = amountFor(roleResources, "gold");
+  const wood = amountFor(kingdomResources, "wood");
+  const stone = amountFor(kingdomResources, "stone");
   const parsedAmount = Number(amount);
   const canSend =
     roleProfileId !== null &&
@@ -70,8 +126,8 @@ export default function MerchantView({
   const resources = [
     { code: "gold", value: gold, gold: true },
     { code: "food", value: amountFor(kingdomResources, "food") },
-    { code: "wood", value: amountFor(kingdomResources, "wood") },
-    { code: "stone", value: amountFor(kingdomResources, "stone") },
+    { code: "wood", value: wood },
+    { code: "stone", value: stone },
   ];
 
   function handleSend(e: React.FormEvent) {
@@ -91,6 +147,19 @@ export default function MerchantView({
         setError(result.error);
       } else {
         setSent(true);
+        router.refresh();
+      }
+    });
+  }
+
+  function handleUpgrade(buildingType: MerchantBuildingType) {
+    if (!roleProfileId) return;
+    setBuildError(null);
+    startBuildTransition(async () => {
+      const result = await upgradeBuilding(roleProfileId, buildingType);
+      if (result.error) {
+        setBuildError(result.error);
+      } else {
         router.refresh();
       }
     });
@@ -175,17 +244,53 @@ export default function MerchantView({
 
         {activeTab === "Produktion" && (
           <div>
-            {producers.map((p) => (
-              <div className="build-project" key={p.name}>
-                <div className="build-project__head">
-                  <span className="build-project__name">{p.name}</span>
-                  <span className="build-project__eta">{p.eta}</span>
+            {buildError && (
+              <p className="auth-message auth-message--error">{buildError}</p>
+            )}
+            {buildingOrder.map((type) => {
+              const level = levelFor(buildings, type);
+              const cost = costFor(level);
+              const maxed = level >= 30;
+              const canAfford = wood >= cost.wood && stone >= cost.stone;
+
+              return (
+                <div className="build-project" key={type}>
+                  <div className="build-project__head">
+                    <span className="build-project__name">
+                      {buildingLabels[type]} — niveau {level}
+                    </span>
+                    <span className="build-project__eta">
+                      {maxed ? "Maks niveau" : `${cost.wood} træ · ${cost.stone} sten`}
+                    </span>
+                  </div>
+                  <p
+                    style={{
+                      fontSize: 12,
+                      color: "var(--text-faint)",
+                      margin: "4px 0 6px",
+                    }}
+                  >
+                    {buildingDescriptions[type]}
+                  </p>
+                  <div className="progress">
+                    <div
+                      className="progress__fill"
+                      style={{ width: `${(level / 30) * 100}%` }}
+                    />
+                  </div>
+                  {!maxed && (
+                    <button
+                      className="btn btn--primary"
+                      style={{ marginTop: 8 }}
+                      disabled={isBuildPending || !canAfford}
+                      onClick={() => handleUpgrade(type)}
+                    >
+                      {canAfford ? "Opgrader" : "Ikke råd"}
+                    </button>
+                  )}
                 </div>
-                <div className="progress">
-                  <div className="progress__fill" style={{ width: `${p.progress}%` }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -200,6 +305,16 @@ export default function MerchantView({
               </div>
             ))}
           </div>
+        )}
+
+        {activeTab === "Evner" && roleProfileId && (
+          <SkillsPanel
+            roleProfileId={roleProfileId}
+            level={level}
+            skills={skills}
+            unlockedCodes={unlockedCodes}
+            resolveTarget={{ realm: realmId, role_profile: kingRoleProfileId ?? undefined }}
+          />
         )}
       </main>
 
