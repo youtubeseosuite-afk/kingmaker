@@ -4,6 +4,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upgradeBuilding, type PriorBuildingType } from "./actions";
+import SkillsPanel from "../skills-panel";
 
 type ResourceRow = { resource_code: string; amount: number };
 type BuildingRow = { building_type: PriorBuildingType; level: number };
@@ -59,19 +60,39 @@ const events = [
 
 const quickActions = ["Udsted velsignelse", "Ekskommunikér"];
 
-const tabs = ["Kloster", "Velsignelser"] as const;
+type Skill = {
+  skill_code: string;
+  skill_name: string;
+  description: string;
+  min_level: number;
+  cost: Record<string, number>;
+  target_type: "tile" | "realm" | "role_profile" | "army_movement";
+  offensive: boolean;
+};
+
+const tabs = ["Kloster", "Velsignelser", "Evner"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function PriorView({
   legitimacy,
   roleProfileId,
+  level,
   kingdomResources,
   buildings,
+  skills,
+  unlockedCodes,
+  realmId,
+  kingRoleProfileId,
 }: {
   legitimacy: number;
   roleProfileId: string | null;
+  level: number;
   kingdomResources: ResourceRow[];
   buildings: BuildingRow[];
+  skills: Skill[];
+  unlockedCodes: string[];
+  realmId: string;
+  kingRoleProfileId: string | null;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Kloster");
   const [buildError, setBuildError] = useState<string | null>(null);
@@ -208,6 +229,16 @@ export default function PriorView({
               </div>
             ))}
           </div>
+        )}
+
+        {activeTab === "Evner" && roleProfileId && (
+          <SkillsPanel
+            roleProfileId={roleProfileId}
+            level={level}
+            skills={skills}
+            unlockedCodes={unlockedCodes}
+            resolveTarget={{ realm: realmId, role_profile: kingRoleProfileId ?? undefined }}
+          />
         )}
       </main>
 
