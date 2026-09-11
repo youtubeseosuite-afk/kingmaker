@@ -16,6 +16,15 @@ type BuildingType =
   | "kitchen"
   | "housing";
 type BuildingRow = { building_type: BuildingType; level: number };
+type BuildingTypeInfo = {
+  building_type: BuildingType;
+  display_name: string;
+  description: string;
+  wood_cost_per_level: number;
+  stone_cost_per_level: number;
+  requires_building_type: BuildingType | null;
+  requires_level: number | null;
+};
 
 const resourceLabels: Record<string, string> = {
   gold: "Guld",
@@ -25,46 +34,41 @@ const resourceLabels: Record<string, string> = {
   stone: "Sten",
 };
 
-const buildingOrder: BuildingType[] = [
-  "keep",
-  "walls",
-  "storehouse",
-  "barracks",
-  "stable",
-  "kitchen",
-  "housing",
-];
-
-const buildingLabels: Record<BuildingType, string> = {
-  keep: "The Keep",
-  walls: "Murene",
-  storehouse: "Lageret",
-  barracks: "Kasernen",
-  stable: "Stalden",
-  kitchen: "Køkkenet",
-  housing: "Almene Boliger",
-};
-
-const buildingDescriptions: Record<BuildingType, string> = {
-  keep: "Rigets administrative hjerte",
-  walls: "Forsvar mod belejring",
-  storehouse: "Hæver lagerkapaciteten for fælles ressourcer",
-  barracks: "Træn Fodfolk og Bueskytter",
-  stable: "Kræves for Kavaleri, øger marchhastighed",
-  kitchen: "Reducerer troppernes madforbrug",
-  housing: "Hæver hvor stor en garnison riget kan understøtte",
-};
-
 function amountFor(rows: ResourceRow[], code: string) {
   return rows.find((r) => r.resource_code === code)?.amount ?? 0;
 }
 
 function levelFor(buildings: BuildingRow[], type: BuildingType) {
-  return buildings.find((b) => b.building_type === type)?.level ?? 1;
+  return buildings.find((b) => b.building_type === type)?.level ?? 0;
 }
 
-function costFor(level: number) {
-  return { wood: 50 * level, stone: 40 * level };
+function labelFor(buildingTypes: BuildingTypeInfo[], type: BuildingType) {
+  return buildingTypes.find((b) => b.building_type === type)?.display_name ?? type;
+}
+
+function costFor(buildingTypes: BuildingTypeInfo[], type: BuildingType, level: number) {
+  const info = buildingTypes.find((b) => b.building_type === type);
+  return {
+    wood: (info?.wood_cost_per_level ?? 50) * level,
+    stone: (info?.stone_cost_per_level ?? 40) * level,
+  };
+}
+
+function prereqStatus(
+  buildingTypes: BuildingTypeInfo[],
+  buildings: BuildingRow[],
+  type: BuildingType
+): { met: boolean; label: string | null } {
+  const info = buildingTypes.find((b) => b.building_type === type);
+  if (!info?.requires_building_type || !info.requires_level) {
+    return { met: true, label: null };
+  }
+  const prereqLevel = levelFor(buildings, info.requires_building_type);
+  const prereqLabel = labelFor(buildingTypes, info.requires_building_type);
+  return {
+    met: prereqLevel >= info.requires_level,
+    label: `${prereqLabel} niveau ${info.requires_level}`,
+  };
 }
 
 const garrison = [
@@ -101,6 +105,7 @@ export default function KingView({
   kingdomResources,
   roleResources,
   buildings,
+  buildingTypes,
   skills,
   unlockedCodes,
   realmId,
@@ -111,6 +116,7 @@ export default function KingView({
   kingdomResources: ResourceRow[];
   roleResources: ResourceRow[];
   buildings: BuildingRow[];
+  buildingTypes: BuildingTypeInfo[];
   skills: Skill[];
   unlockedCodes: string[];
   realmId: string;
@@ -192,17 +198,22 @@ export default function KingView({
         {activeTab === "Slot" && (
           <div>
             {error && <p className="auth-message auth-message--error">{error}</p>}
-            {buildingOrder.map((type) => {
-              const level = levelFor(buildings, type);
-              const cost = costFor(level);
-              const maxed = level >= 30;
+            {buildingTypes.map((info) => {
+              const type = info.building_type;
+              const builtLevel = levelFor(buildings, type);
+              const displayLevel = Math.max(builtLevel, 1);
+              const cost = costFor(buildingTypes, type, displayLevel);
+              const maxed = builtLevel >= 30;
               const canAfford = wood >= cost.wood && stone >= cost.stone;
+              const prereq = prereqStatus(buildingTypes, buildings, type);
+              const locked = builtLevel === 0 && !prereq.met;
 
               return (
                 <div className="build-project" key={type}>
                   <div className="build-project__head">
                     <span className="build-project__name">
-                      {buildingLabels[type]} — niveau {level}
+                      {info.display_name}
+                      {builtLevel > 0 ? ` — niveau ${builtLevel}` : " — ikke bygget"}
                     </span>
                     <span className="build-project__eta">
                       {maxed ? "Maks niveau" : `${cost.wood} træ · ${cost.stone} sten`}
@@ -215,15 +226,20 @@ export default function KingView({
                       margin: "4px 0 6px",
                     }}
                   >
-                    {buildingDescriptions[type]}
+                    {info.description}
                   </p>
                   <div className="progress">
                     <div
                       className="progress__fill"
-                      style={{ width: `${(level / 30) * 100}%` }}
+                      style={{ width: `${(builtLevel / 30) * 100}%` }}
                     />
                   </div>
-                  {!maxed && (
+                  {locked && (
+                    <p style={{ fontSize: 12, color: "var(--text-faint)", marginTop: 8 }}>
+                      Kræver {prereq.label}
+                    </p>
+                  )}
+                  {!locked && !maxed && (
                     <button
                       className="btn btn--primary"
                       style={{ marginTop: 8 }}
