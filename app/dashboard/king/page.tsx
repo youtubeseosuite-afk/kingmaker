@@ -51,6 +51,14 @@ export default async function KingPage() {
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
+  const { data: buildingTypes } = await supabase
+    .from("building_types")
+    .select(
+      "building_type, display_name, description, wood_cost_per_level, stone_cost_per_level, requires_building_type, requires_level"
+    )
+    .eq("role", "king")
+    .order("building_type");
+
   const { data: skills } = await supabase
     .from("role_skills")
     .select("skill_code, skill_name, description, min_level, cost, target_type, offensive")
@@ -72,6 +80,7 @@ export default async function KingPage() {
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
       buildings={buildings ?? []}
+      buildingTypes={buildingTypes ?? []}
       skills={skills ?? []}
       unlockedCodes={(unlocks ?? []).map((u) => u.skill_code)}
       realmId={realm.id}
