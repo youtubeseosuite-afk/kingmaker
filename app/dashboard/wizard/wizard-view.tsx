@@ -58,8 +58,6 @@ const events = [
   { time: "10:12", text: "Tåge løftet over de østlige marker" },
 ];
 
-const quickActions = ["Send spejder", "Kast forbandelse", "Læs tegn"];
-
 type Skill = {
   skill_code: string;
   skill_name: string;
@@ -291,15 +289,6 @@ export default function WizardView({
           ))}
         </div>
       </aside>
-
-      <footer className="panel-bottom">
-        <input className="command-input" placeholder="Udsted en befaling..." />
-        {quickActions.map((action) => (
-          <button className="btn" key={action}>
-            {action}
-          </button>
-        ))}
-      </footer>
     </div>
   );
 }
