@@ -27,3 +27,57 @@ export async function sendGoldToKing(
 
   return {};
 }
+
+export type MerchantBuildingType =
+  | "marketplace"
+  | "brewery"
+  | "weaver"
+  | "goldsmith"
+  | "warehouse"
+  | "caravan_post"
+  | "alchemist";
+
+export async function upgradeBuilding(
+  roleProfileId: string,
+  buildingType: MerchantBuildingType
+): Promise<{ error?: string; level?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("upgrade_building", {
+    p_role_profile_id: roleProfileId,
+    p_building_type: buildingType,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { level: data as number };
+}
+
+export async function collectProduction(
+  roleProfileId: string,
+  buildingType: MerchantBuildingType
+): Promise<{
+  error?: string;
+  cycles?: number;
+  producedResource?: string;
+  producedAmount?: number;
+  note?: string;
+}> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("collect_production", {
+    p_role_profile_id: roleProfileId,
+    p_building_type: buildingType,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {
+    cycles: data?.cycles,
+    producedResource: data?.produced_resource,
+    producedAmount: data?.produced_amount,
+    note: data?.note,
+  };
+}
