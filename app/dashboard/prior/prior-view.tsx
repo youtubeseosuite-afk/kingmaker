@@ -58,8 +58,6 @@ const events = [
   { time: "09:05", text: "Klosteret modtog en gave fra en fremmed rejsende" },
 ];
 
-const quickActions = ["Udsted velsignelse", "Ekskommunikér"];
-
 type Skill = {
   skill_code: string;
   skill_name: string;
@@ -253,15 +251,6 @@ export default function PriorView({
           ))}
         </div>
       </aside>
-
-      <footer className="panel-bottom">
-        <input className="command-input" placeholder="Udsted en befaling..." />
-        {quickActions.map((action) => (
-          <button className="btn" key={action}>
-            {action}
-          </button>
-        ))}
-      </footer>
     </div>
   );
 }
