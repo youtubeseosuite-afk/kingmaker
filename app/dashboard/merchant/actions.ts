@@ -81,3 +81,41 @@ export async function collectProduction(
     note: data?.note,
   };
 }
+
+export async function sellToMarket(
+  roleProfileId: string,
+  resourceCode: string,
+  quantity: number
+): Promise<{ error?: string; goldEarned?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("sell_to_market", {
+    p_role_profile_id: roleProfileId,
+    p_resource_code: resourceCode,
+    p_quantity: quantity,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { goldEarned: data?.gold_earned };
+}
+
+export async function buyFromMarket(
+  roleProfileId: string,
+  resourceCode: string,
+  quantity: number
+): Promise<{ error?: string; goldSpent?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("buy_from_market", {
+    p_role_profile_id: roleProfileId,
+    p_resource_code: resourceCode,
+    p_quantity: quantity,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { goldSpent: data?.gold_spent };
+}
