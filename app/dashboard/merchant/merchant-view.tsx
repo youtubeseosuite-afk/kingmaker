@@ -97,8 +97,6 @@ const events = [
   { time: "11:30", text: "Troldmanden har afsløret nye ressourcer ved (41, 9)" },
 ];
 
-const quickActions = ["Send karavane", "Åbn markedet"];
-
 type Skill = {
   skill_code: string;
   skill_name: string;
@@ -495,15 +493,6 @@ export default function MerchantView({
           ))}
         </div>
       </aside>
-
-      <footer className="panel-bottom">
-        <input className="command-input" placeholder="Udsted en befaling..." />
-        {quickActions.map((action) => (
-          <button className="btn" key={action}>
-            {action}
-          </button>
-        ))}
-      </footer>
     </div>
   );
 }
