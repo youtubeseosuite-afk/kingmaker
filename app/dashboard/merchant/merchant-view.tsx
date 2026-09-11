@@ -7,12 +7,15 @@ import {
   sendGoldToKing,
   upgradeBuilding,
   collectProduction,
+  sellToMarket,
+  buyFromMarket,
   type MerchantBuildingType,
 } from "./actions";
 import SkillsPanel from "../skills-panel";
 
 type ResourceRow = { resource_code: string; amount: number };
 type BuildingRow = { building_type: MerchantBuildingType; level: number };
+type MarketRow = { resource_code: string; sellable: boolean; buyable: boolean; price: number };
 
 const resourceLabels: Record<string, string> = {
   gold: "Guld",
@@ -26,6 +29,12 @@ const producedResourceLabels: Record<string, string> = {
   cloth: "Klæde",
   jewelry: "Smykker",
   incense: "Røgelse",
+};
+
+const marketResourceLabels: Record<string, string> = {
+  ...producedResourceLabels,
+  iron: "Jern",
+  crystal: "Krystal",
 };
 
 const buildingOrder: MerchantBuildingType[] = [
@@ -114,6 +123,7 @@ export default function MerchantView({
   skills,
   unlockedCodes,
   realmId,
+  marketPrices,
 }: {
   worldId: string;
   roleProfileId: string | null;
@@ -125,6 +135,7 @@ export default function MerchantView({
   skills: Skill[];
   unlockedCodes: string[];
   realmId: string;
+  marketPrices: MarketRow[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Handel");
   const [amount, setAmount] = useState("100");
@@ -132,6 +143,10 @@ export default function MerchantView({
   const [sent, setSent] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
   const [collectNote, setCollectNote] = useState<string | null>(null);
+  const [tradeError, setTradeError] = useState<string | null>(null);
+  const [tradeNote, setTradeNote] = useState<string | null>(null);
+  const [tradeQuantities, setTradeQuantities] = useState<Record<string, string>>({});
+  const [isTradePending, startTradeTransition] = useTransition();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isBuildPending, startBuildTransition] = useTransition();
@@ -203,6 +218,42 @@ export default function MerchantView({
         router.refresh();
       } else {
         setCollectNote(result.note ?? "Intet at indsamle endnu");
+      }
+    });
+  }
+
+  function handleSell(resourceCode: string) {
+    if (!roleProfileId) return;
+    const qty = Number(tradeQuantities[resourceCode] ?? "0");
+    if (qty <= 0) return;
+
+    setTradeError(null);
+    setTradeNote(null);
+    startTradeTransition(async () => {
+      const result = await sellToMarket(roleProfileId, resourceCode, qty);
+      if (result.error) {
+        setTradeError(result.error);
+      } else {
+        setTradeNote(`Solgt ${qty} ${marketResourceLabels[resourceCode]} for ${Math.floor(result.goldEarned ?? 0)} guld`);
+        router.refresh();
+      }
+    });
+  }
+
+  function handleBuy(resourceCode: string) {
+    if (!roleProfileId) return;
+    const qty = Number(tradeQuantities[resourceCode] ?? "0");
+    if (qty <= 0) return;
+
+    setTradeError(null);
+    setTradeNote(null);
+    startTradeTransition(async () => {
+      const result = await buyFromMarket(roleProfileId, resourceCode, qty);
+      if (result.error) {
+        setTradeError(result.error);
+      } else {
+        setTradeNote(`Købt ${qty} ${marketResourceLabels[resourceCode]} for ${Math.floor(result.goldSpent ?? 0)} guld`);
+        router.refresh();
       }
     });
   }
@@ -279,8 +330,63 @@ export default function MerchantView({
         </nav>
 
         {activeTab === "Handel" && (
-          <div className="placeholder-note">
-            Markedet forbindes når handelspriser er trukket fra Supabase.
+          <div>
+            {tradeError && (
+              <p className="auth-message auth-message--error">{tradeError}</p>
+            )}
+            {tradeNote && (
+              <p className="auth-message auth-message--success">{tradeNote}</p>
+            )}
+            {marketPrices.map((m) => {
+              const label = marketResourceLabels[m.resource_code] ?? m.resource_code;
+              const owned = amountFor(roleResources, m.resource_code);
+              const qty = tradeQuantities[m.resource_code] ?? "";
+
+              return (
+                <div className="build-project" key={m.resource_code}>
+                  <div className="build-project__head">
+                    <span className="build-project__name">{label}</span>
+                    <span className="build-project__eta">
+                      {Math.round(m.price)} guld/stk
+                    </span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "4px 0 8px" }}>
+                    {m.sellable && `Du har ${Math.floor(owned)}`}
+                    {m.buyable && `Guld i kiste: ${Math.floor(gold)}`}
+                  </p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="command-input"
+                      type="number"
+                      min={1}
+                      placeholder="Antal"
+                      value={qty}
+                      onChange={(e) =>
+                        setTradeQuantities({ ...tradeQuantities, [m.resource_code]: e.target.value })
+                      }
+                    />
+                    {m.sellable && (
+                      <button
+                        className="btn btn--primary"
+                        disabled={isTradePending}
+                        onClick={() => handleSell(m.resource_code)}
+                      >
+                        Sælg
+                      </button>
+                    )}
+                    {m.buyable && (
+                      <button
+                        className="btn btn--primary"
+                        disabled={isTradePending}
+                        onClick={() => handleBuy(m.resource_code)}
+                      >
+                        Køb
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
