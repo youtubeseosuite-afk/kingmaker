@@ -71,6 +71,26 @@ export default async function MerchantPage() {
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
+  const { data: marketRows } = await supabase
+    .from("market_prices")
+    .select("resource_code, sellable, buyable")
+    .eq("world_id", realm.world_id);
+
+  const marketPrices = await Promise.all(
+    (marketRows ?? []).map(async (row) => {
+      const { data: price } = await supabase.rpc("calculate_current_market_price", {
+        p_world_id: realm.world_id,
+        p_resource_code: row.resource_code,
+      });
+      return {
+        resource_code: row.resource_code,
+        sellable: row.sellable,
+        buyable: row.buyable,
+        price: price ?? 0,
+      };
+    })
+  );
+
   return (
     <MerchantView
       worldId={realm.world_id}
@@ -83,6 +103,7 @@ export default async function MerchantPage() {
       skills={skills ?? []}
       unlockedCodes={(unlocks ?? []).map((u) => u.skill_code)}
       realmId={realm.id}
+      marketPrices={marketPrices}
     />
   );
 }
