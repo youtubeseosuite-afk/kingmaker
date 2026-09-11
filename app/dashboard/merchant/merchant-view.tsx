@@ -3,7 +3,12 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { sendGoldToKing, upgradeBuilding, type MerchantBuildingType } from "./actions";
+import {
+  sendGoldToKing,
+  upgradeBuilding,
+  collectProduction,
+  type MerchantBuildingType,
+} from "./actions";
 import SkillsPanel from "../skills-panel";
 
 type ResourceRow = { resource_code: string; amount: number };
@@ -16,11 +21,19 @@ const resourceLabels: Record<string, string> = {
   stone: "Sten",
 };
 
+const producedResourceLabels: Record<string, string> = {
+  beer: "Øl",
+  cloth: "Klæde",
+  jewelry: "Smykker",
+  incense: "Røgelse",
+};
+
 const buildingOrder: MerchantBuildingType[] = [
   "marketplace",
   "brewery",
   "weaver",
   "goldsmith",
+  "alchemist",
   "warehouse",
   "caravan_post",
 ];
@@ -30,17 +43,26 @@ const buildingLabels: Record<MerchantBuildingType, string> = {
   brewery: "Bryggeriet",
   weaver: "Vævestuen",
   goldsmith: "Guldsmedjen",
+  alchemist: "Alkymisten",
   warehouse: "Pakhuset",
   caravan_post: "Karavaneposten",
 };
 
 const buildingDescriptions: Record<MerchantBuildingType, string> = {
   marketplace: "Handelshusets base — åbner markedet for alvor",
-  brewery: "Omsætter Mad og Træ til Øl",
-  weaver: "Omsætter Træ til Klæde",
+  brewery: "Omsætter Mad og Vand til Øl",
+  weaver: "Omsætter Hamp/Uld og Farvestof til Klæde",
   goldsmith: "Omsætter Guld og Krystal til Smykker",
+  alchemist: "Omsætter Sjældne Planter og Krystal til Røgelse",
   warehouse: "Hæver lagerkapaciteten for Guld",
   caravan_post: "Åbner og fremskynder handelsruter",
+};
+
+const producedResourceByBuilding: Partial<Record<MerchantBuildingType, string>> = {
+  brewery: "beer",
+  weaver: "cloth",
+  goldsmith: "jewelry",
+  alchemist: "incense",
 };
 
 function amountFor(rows: ResourceRow[], code: string) {
@@ -109,9 +131,11 @@ export default function MerchantView({
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
+  const [collectNote, setCollectNote] = useState<string | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isBuildPending, startBuildTransition] = useTransition();
+  const [isCollectPending, startCollectTransition] = useTransition();
 
   const gold = amountFor(roleResources, "gold");
   const wood = amountFor(kingdomResources, "wood");
@@ -161,6 +185,24 @@ export default function MerchantView({
         setBuildError(result.error);
       } else {
         router.refresh();
+      }
+    });
+  }
+
+  function handleCollect(buildingType: MerchantBuildingType) {
+    if (!roleProfileId) return;
+    setBuildError(null);
+    setCollectNote(null);
+    startCollectTransition(async () => {
+      const result = await collectProduction(roleProfileId, buildingType);
+      if (result.error) {
+        setBuildError(result.error);
+      } else if (result.cycles && result.cycles > 0) {
+        const label = producedResourceLabels[result.producedResource ?? ""] ?? result.producedResource;
+        setCollectNote(`Indsamlet ${result.producedAmount} ${label}`);
+        router.refresh();
+      } else {
+        setCollectNote(result.note ?? "Intet at indsamle endnu");
       }
     });
   }
@@ -247,11 +289,16 @@ export default function MerchantView({
             {buildError && (
               <p className="auth-message auth-message--error">{buildError}</p>
             )}
+            {collectNote && (
+              <p className="auth-message auth-message--success">{collectNote}</p>
+            )}
             {buildingOrder.map((type) => {
               const level = levelFor(buildings, type);
               const cost = costFor(level);
               const maxed = level >= 30;
               const canAfford = wood >= cost.wood && stone >= cost.stone;
+              const outputCode = producedResourceByBuilding[type];
+              const stock = outputCode ? amountFor(roleResources, outputCode) : null;
 
               return (
                 <div className="build-project" key={type}>
@@ -271,6 +318,9 @@ export default function MerchantView({
                     }}
                   >
                     {buildingDescriptions[type]}
+                    {stock !== null && outputCode && (
+                      <> — beholdning: {Math.floor(stock)} {producedResourceLabels[outputCode]}</>
+                    )}
                   </p>
                   <div className="progress">
                     <div
@@ -278,16 +328,26 @@ export default function MerchantView({
                       style={{ width: `${(level / 30) * 100}%` }}
                     />
                   </div>
-                  {!maxed && (
-                    <button
-                      className="btn btn--primary"
-                      style={{ marginTop: 8 }}
-                      disabled={isBuildPending || !canAfford}
-                      onClick={() => handleUpgrade(type)}
-                    >
-                      {canAfford ? "Opgrader" : "Ikke råd"}
-                    </button>
-                  )}
+                  <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                    {!maxed && (
+                      <button
+                        className="btn btn--primary"
+                        disabled={isBuildPending || !canAfford}
+                        onClick={() => handleUpgrade(type)}
+                      >
+                        {canAfford ? "Opgrader" : "Ikke råd"}
+                      </button>
+                    )}
+                    {outputCode && (
+                      <button
+                        className="btn"
+                        disabled={isCollectPending}
+                        onClick={() => handleCollect(type)}
+                      >
+                        Indsaml
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
