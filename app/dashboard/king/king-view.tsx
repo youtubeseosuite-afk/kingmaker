@@ -83,8 +83,6 @@ const events = [
   { time: "12:10", text: "Muren er styrket til niveau 4" },
 ];
 
-const quickActions = ["Træn tropper", "Kald til våben"];
-
 type Skill = {
   skill_code: string;
   skill_name: string;
@@ -294,15 +292,6 @@ export default function KingView({
           ))}
         </div>
       </aside>
-
-      <footer className="panel-bottom">
-        <input className="command-input" placeholder="Udsted en befaling..." />
-        {quickActions.map((action) => (
-          <button className="btn" key={action}>
-            {action}
-          </button>
-        ))}
-      </footer>
     </div>
   );
 }
