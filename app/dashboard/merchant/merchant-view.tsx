@@ -12,17 +12,27 @@ import {
   type MerchantBuildingType,
 } from "./actions";
 import SkillsPanel from "../skills-panel";
+import { resourceLabels } from "../resource-labels";
 
 type ResourceRow = { resource_code: string; amount: number };
 type BuildingRow = { building_type: MerchantBuildingType; level: number };
 type MarketRow = { resource_code: string; sellable: boolean; buyable: boolean; price: number };
-
-const resourceLabels: Record<string, string> = {
-  gold: "Guld",
-  food: "Mad",
-  wood: "Træ",
-  stone: "Sten",
+type ActiveModifier = {
+  id: string;
+  modifier_code: string;
+  modifier_value: number;
+  expires_at: string | null;
+  role_skills: { skill_name: string } | null;
 };
+
+function timeRemaining(expiresAt: string | null) {
+  if (!expiresAt) return "Permanent";
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return "Udløbet";
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  return `${hours}t ${minutes}m`;
+}
 
 const producedResourceLabels: Record<string, string> = {
   beer: "Øl",
@@ -122,6 +132,7 @@ export default function MerchantView({
   unlockedCodes,
   realmId,
   marketPrices,
+  activeModifiers,
 }: {
   worldId: string;
   roleProfileId: string | null;
@@ -134,6 +145,7 @@ export default function MerchantView({
   unlockedCodes: string[];
   realmId: string;
   marketPrices: MarketRow[];
+  activeModifiers: ActiveModifier[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Handel");
   const [amount, setAmount] = useState("100");
@@ -159,13 +171,6 @@ export default function MerchantView({
     kingRoleProfileId !== null &&
     parsedAmount > 0 &&
     parsedAmount <= gold;
-
-  const resources = [
-    { code: "gold", value: gold, gold: true },
-    { code: "food", value: amountFor(kingdomResources, "food") },
-    { code: "wood", value: wood },
-    { code: "stone", value: stone },
-  ];
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -258,60 +263,79 @@ export default function MerchantView({
 
   return (
     <div className="dashboard">
-      <header className="topbar">
-        <div className="resource-row">
-          {resources.map((r) => (
-            <div
-              key={r.code}
-              className={`resource-pill${r.gold ? " resource-pill--gold" : ""}`}
-            >
-              <span className="resource-pill__label">{resourceLabels[r.code]}</span>
-              <span className="resource-pill__value">
-                {Math.floor(r.value).toLocaleString("da-DK")}
-              </span>
+      <aside className="panel-left">
+        <div className="sidebar-section">
+          <div className="panel-title">Handelshusets stilling</div>
+          <div className="stat-row">
+            <span className="stat-row__label">Aktive ruter</span>
+            <span className="stat-row__value">{trades.length}</span>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="panel-title">Lager</div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.gold}</span>
+            <span className="stat-row__value stat-row__value--accent">
+              {Math.floor(gold).toLocaleString("da-DK")}
+            </span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.food}</span>
+            <span className="stat-row__value">
+              {Math.floor(amountFor(kingdomResources, "food")).toLocaleString("da-DK")}
+            </span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.wood}</span>
+            <span className="stat-row__value">{Math.floor(wood).toLocaleString("da-DK")}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.stone}</span>
+            <span className="stat-row__value">{Math.floor(stone).toLocaleString("da-DK")}</span>
+          </div>
+
+          <form
+            onSubmit={handleSend}
+            style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}
+          >
+            <label className="auth-form__label" htmlFor="gold-amount">
+              Overfør guld til Kongen
+            </label>
+            <input
+              className="command-input"
+              id="gold-amount"
+              type="number"
+              min={1}
+              max={Math.floor(gold)}
+              value={amount}
+              onChange={(e) => {
+                setAmount(e.target.value);
+                setSent(false);
+              }}
+            />
+            <button className="btn btn--primary" type="submit" disabled={isPending || !canSend}>
+              {isPending ? "Sender..." : "Send"}
+            </button>
+            {error && <p className="auth-message auth-message--error">{error}</p>}
+            {sent && !error && (
+              <p className="auth-message auth-message--success">Guld overført til Kongen.</p>
+            )}
+          </form>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="panel-title">Aktive bonusser</div>
+          {activeModifiers.length === 0 && (
+            <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Ingen aktive bonusser</p>
+          )}
+          {activeModifiers.map((m) => (
+            <div className="stat-row" key={m.id}>
+              <span className="stat-row__label">{m.role_skills?.skill_name ?? m.modifier_code}</span>
+              <span className="stat-row__value">{timeRemaining(m.expires_at)}</span>
             </div>
           ))}
         </div>
-      </header>
-
-      <aside className="panel-left">
-        <div className="panel-title">Handelshusets stilling</div>
-        <div className="stat-row">
-          <span className="stat-row__label">Guld i kiste</span>
-          <span className="stat-row__value">{Math.floor(gold).toLocaleString("da-DK")}</span>
-        </div>
-        <div className="stat-row">
-          <span className="stat-row__label">Aktive ruter</span>
-          <span className="stat-row__value">{trades.length}</span>
-        </div>
-
-        <form
-          onSubmit={handleSend}
-          style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}
-        >
-          <label className="auth-form__label" htmlFor="gold-amount">
-            Overfør guld til Kongen
-          </label>
-          <input
-            className="command-input"
-            id="gold-amount"
-            type="number"
-            min={1}
-            max={Math.floor(gold)}
-            value={amount}
-            onChange={(e) => {
-              setAmount(e.target.value);
-              setSent(false);
-            }}
-          />
-          <button className="btn btn--primary" type="submit" disabled={isPending || !canSend}>
-            {isPending ? "Sender..." : "Send"}
-          </button>
-          {error && <p className="auth-message auth-message--error">{error}</p>}
-          {sent && !error && (
-            <p className="auth-message auth-message--success">Guld overført til Kongen.</p>
-          )}
-        </form>
       </aside>
 
       <main className="panel-center">
