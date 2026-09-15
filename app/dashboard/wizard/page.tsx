@@ -85,6 +85,17 @@ export default async function WizardPage() {
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
+  const nowIso = new Date().toISOString();
+  const { data: activeModifiers } = roleProfile
+    ? await supabase
+        .from("active_modifiers")
+        .select("id, modifier_code, modifier_value, expires_at, role_skills(skill_name)")
+        .or(
+          `and(target_type.eq.role_profile,target_id.eq.${roleProfile.id}),and(target_type.eq.realm,target_id.eq.${realm.id})`
+        )
+        .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
+    : { data: [] };
+
   return (
     <WizardView
       sight={roleProfile?.sight ?? 0}
@@ -99,6 +110,7 @@ export default async function WizardPage() {
       buildings={buildings ?? []}
       skills={skills ?? []}
       unlockedCodes={(unlocks ?? []).map((u) => u.skill_code)}
+      activeModifiers={activeModifiers ?? []}
     />
   );
 }
