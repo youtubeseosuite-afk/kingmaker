@@ -6,18 +6,19 @@ import { useRouter } from "next/navigation";
 import MapGrid from "../map-grid";
 import { scoutTile, upgradeBuilding, type WizardBuildingType } from "./actions";
 import SkillsPanel from "../skills-panel";
+import { resourceLabels } from "../resource-labels";
 
 type ResourceRow = { resource_code: string; amount: number };
 type Tile = { id: string; x: number; y: number; terrain: string };
 type VisibilityRow = { tile_id: string; visibility: "unknown" | "scouted" | "visible" };
 type OwnershipRow = { tile_id: string; status: string; owner_realm_id: string | null };
 type BuildingRow = { building_type: WizardBuildingType; level: number };
-
-const resourceLabels: Record<string, string> = {
-  crystal: "Krystal",
-  food: "Mad",
-  wood: "Træ",
-  stone: "Sten",
+type ActiveModifier = {
+  id: string;
+  modifier_code: string;
+  modifier_value: number;
+  expires_at: string | null;
+  role_skills: { skill_name: string } | null;
 };
 
 const buildingOrder: WizardBuildingType[] = [
@@ -53,6 +54,15 @@ function costFor(level: number) {
   return { wood: 50 * level, stone: 40 * level };
 }
 
+function timeRemaining(expiresAt: string | null) {
+  if (!expiresAt) return "Permanent";
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return "Udløbet";
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  return `${hours}t ${minutes}m`;
+}
+
 const events = [
   { time: "11:30", text: "Ny krystalforekomst afsløret ved (41, 9)" },
   { time: "10:12", text: "Tåge løftet over de østlige marker" },
@@ -84,6 +94,7 @@ export default function WizardView({
   buildings,
   skills,
   unlockedCodes,
+  activeModifiers,
 }: {
   sight: number;
   roleProfileId: string | null;
@@ -97,6 +108,7 @@ export default function WizardView({
   buildings: BuildingRow[];
   skills: Skill[];
   unlockedCodes: string[];
+  activeModifiers: ActiveModifier[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Synskraft");
   const [scoutError, setScoutError] = useState<string | null>(null);
@@ -107,13 +119,7 @@ export default function WizardView({
 
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
-
-  const resources = [
-    { code: "crystal", value: amountFor(roleResources, "crystal"), gold: true },
-    { code: "food", value: amountFor(kingdomResources, "food") },
-    { code: "wood", value: wood },
-    { code: "stone", value: stone },
-  ];
+  const crystal = amountFor(roleResources, "crystal");
 
   const visibilityMap: Record<string, "unknown" | "scouted" | "visible"> = {};
   visibility.forEach((v) => {
@@ -159,31 +165,54 @@ export default function WizardView({
 
   return (
     <div className="dashboard">
-      <header className="topbar">
-        <div className="resource-row">
-          {resources.map((r) => (
-            <div
-              key={r.code}
-              className={`resource-pill${r.gold ? " resource-pill--gold" : ""}`}
-            >
-              <span className="resource-pill__label">{resourceLabels[r.code]}</span>
-              <span className="resource-pill__value">
-                {Math.floor(r.value).toLocaleString("da-DK")}
-              </span>
+      <aside className="panel-left">
+        <div className="sidebar-section">
+          <div className="panel-title">Troldmandens indsigt</div>
+          <div className="stat-row">
+            <span className="stat-row__label">Synskraft</span>
+            <span className="stat-row__value">{sight}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">Scoutede felter</span>
+            <span className="stat-row__value">{scoutedCount}</span>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="panel-title">Lager</div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.crystal}</span>
+            <span className="stat-row__value stat-row__value--accent">
+              {Math.floor(crystal).toLocaleString("da-DK")}
+            </span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.food}</span>
+            <span className="stat-row__value">
+              {Math.floor(amountFor(kingdomResources, "food")).toLocaleString("da-DK")}
+            </span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.wood}</span>
+            <span className="stat-row__value">{Math.floor(wood).toLocaleString("da-DK")}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.stone}</span>
+            <span className="stat-row__value">{Math.floor(stone).toLocaleString("da-DK")}</span>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="panel-title">Aktive bonusser</div>
+          {activeModifiers.length === 0 && (
+            <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Ingen aktive bonusser</p>
+          )}
+          {activeModifiers.map((m) => (
+            <div className="stat-row" key={m.id}>
+              <span className="stat-row__label">{m.role_skills?.skill_name ?? m.modifier_code}</span>
+              <span className="stat-row__value">{timeRemaining(m.expires_at)}</span>
             </div>
           ))}
-        </div>
-      </header>
-
-      <aside className="panel-left">
-        <div className="panel-title">Troldmandens indsigt</div>
-        <div className="stat-row">
-          <span className="stat-row__label">Synskraft</span>
-          <span className="stat-row__value">{sight}</span>
-        </div>
-        <div className="stat-row">
-          <span className="stat-row__label">Scoutede felter</span>
-          <span className="stat-row__value">{scoutedCount}</span>
         </div>
       </aside>
 
