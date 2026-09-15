@@ -5,14 +5,16 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { upgradeBuilding, type PriorBuildingType } from "./actions";
 import SkillsPanel from "../skills-panel";
+import { resourceLabels } from "../resource-labels";
 
 type ResourceRow = { resource_code: string; amount: number };
 type BuildingRow = { building_type: PriorBuildingType; level: number };
-
-const resourceLabels: Record<string, string> = {
-  food: "Mad",
-  wood: "Træ",
-  stone: "Sten",
+type ActiveModifier = {
+  id: string;
+  modifier_code: string;
+  modifier_value: number;
+  expires_at: string | null;
+  role_skills: { skill_name: string } | null;
 };
 
 const buildingOrder: PriorBuildingType[] = [
@@ -48,6 +50,15 @@ function costFor(level: number) {
   return { wood: 50 * level, stone: 40 * level };
 }
 
+function timeRemaining(expiresAt: string | null) {
+  if (!expiresAt) return "Permanent";
+  const ms = new Date(expiresAt).getTime() - Date.now();
+  if (ms <= 0) return "Udløbet";
+  const hours = Math.floor(ms / 3600000);
+  const minutes = Math.floor((ms % 3600000) / 60000);
+  return `${hours}t ${minutes}m`;
+}
+
 const blessings = [
   { name: "Velsignelse over garnisonen", target: "Kongen", status: "Aktiv" },
   { name: "Produktions-buff", target: "Købmanden", status: "Udløbet" },
@@ -81,6 +92,7 @@ export default function PriorView({
   unlockedCodes,
   realmId,
   kingRoleProfileId,
+  activeModifiers,
 }: {
   legitimacy: number;
   roleProfileId: string | null;
@@ -91,6 +103,7 @@ export default function PriorView({
   unlockedCodes: string[];
   realmId: string;
   kingRoleProfileId: string | null;
+  activeModifiers: ActiveModifier[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Kloster");
   const [buildError, setBuildError] = useState<string | null>(null);
@@ -99,12 +112,7 @@ export default function PriorView({
 
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
-
-  const resources = [
-    { code: "food", value: amountFor(kingdomResources, "food"), gold: true },
-    { code: "wood", value: wood },
-    { code: "stone", value: stone },
-  ];
+  const food = amountFor(kingdomResources, "food");
 
   function handleUpgrade(buildingType: PriorBuildingType) {
     if (!roleProfileId) return;
@@ -121,33 +129,48 @@ export default function PriorView({
 
   return (
     <div className="dashboard">
-      <header className="topbar">
-        <div className="resource-row">
-          {resources.map((r) => (
-            <div
-              key={r.code}
-              className={`resource-pill${r.gold ? " resource-pill--gold" : ""}`}
-            >
-              <span className="resource-pill__label">{resourceLabels[r.code]}</span>
-              <span className="resource-pill__value">
-                {Math.floor(r.value).toLocaleString("da-DK")}
-              </span>
+      <aside className="panel-left">
+        <div className="sidebar-section">
+          <div className="panel-title">Priorens autoritet</div>
+          <div className="stat-row">
+            <span className="stat-row__label">Legitimitet</span>
+            <span className="stat-row__value">{legitimacy}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">Aktive velsignelser</span>
+            <span className="stat-row__value">
+              {blessings.filter((b) => b.status === "Aktiv").length}
+            </span>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="panel-title">Lager</div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.food}</span>
+            <span className="stat-row__value">{Math.floor(food).toLocaleString("da-DK")}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.wood}</span>
+            <span className="stat-row__value">{Math.floor(wood).toLocaleString("da-DK")}</span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">{resourceLabels.stone}</span>
+            <span className="stat-row__value">{Math.floor(stone).toLocaleString("da-DK")}</span>
+          </div>
+        </div>
+
+        <div className="sidebar-section">
+          <div className="panel-title">Aktive bonusser</div>
+          {activeModifiers.length === 0 && (
+            <p style={{ fontSize: 12, color: "var(--text-faint)" }}>Ingen aktive bonusser</p>
+          )}
+          {activeModifiers.map((m) => (
+            <div className="stat-row" key={m.id}>
+              <span className="stat-row__label">{m.role_skills?.skill_name ?? m.modifier_code}</span>
+              <span className="stat-row__value">{timeRemaining(m.expires_at)}</span>
             </div>
           ))}
-        </div>
-      </header>
-
-      <aside className="panel-left">
-        <div className="panel-title">Priorens autoritet</div>
-        <div className="stat-row">
-          <span className="stat-row__label">Legitimitet</span>
-          <span className="stat-row__value">{legitimacy}</span>
-        </div>
-        <div className="stat-row">
-          <span className="stat-row__label">Aktive velsignelser</span>
-          <span className="stat-row__value">
-            {blessings.filter((b) => b.status === "Aktiv").length}
-          </span>
         </div>
       </aside>
 
