@@ -19,6 +19,16 @@ import MapGrid from "../map-grid";
 
 type ResourceRow = { resource_code: string; amount: number };
 type ResourceCap = { resource_code: string; storage_cap: number };
+type TerrainYield = { structure_type: string; terrain: string; yield_multiplier: number };
+
+const terrainLabels: Record<string, string> = {
+  plains: "Slette",
+  forest: "Skov",
+  hills: "Bakker",
+  water: "Vand",
+  swamp: "Sump",
+  mountain: "Bjerg",
+};
 type BuildingType =
   | "keep"
   | "walls"
@@ -112,6 +122,13 @@ function utilizationFor(amount: number, caps: ResourceCap[], code: string) {
   const cap = caps.find((c) => c.resource_code === code)?.storage_cap ?? 1000;
   if (cap <= 0) return 0;
   return Math.min(100, Math.round((amount / cap) * 100));
+}
+
+function terrainYieldFor(terrainYields: TerrainYield[], structureType: string, terrain: string) {
+  const row = terrainYields.find(
+    (t) => t.structure_type === structureType && t.terrain === terrain
+  );
+  return row ? Math.round(row.yield_multiplier * 100) : 100;
 }
 
 function amountFor(rows: ResourceRow[], code: string) {
@@ -225,6 +242,7 @@ export default function KingView({
   roleResources,
   kingdomCaps,
   roleCaps,
+  terrainYields,
   buildings,
   buildingTypes,
   skills,
@@ -252,6 +270,7 @@ export default function KingView({
   roleResources: ResourceRow[];
   kingdomCaps: ResourceCap[];
   roleCaps: ResourceCap[];
+  terrainYields: TerrainYield[];
   buildings: BuildingRow[];
   buildingTypes: BuildingTypeInfo[];
   skills: Skill[];
@@ -336,6 +355,7 @@ export default function KingView({
   });
 
   const selectedStructure = selectedTile ? structureMap[selectedTile] : undefined;
+  const selectedTerrain = selectedTile ? tiles.find((t) => t.id === selectedTile)?.terrain : undefined;
 
   function handleTileClick(tileId: string) {
     setSelectedTile(tileId);
@@ -700,7 +720,12 @@ export default function KingView({
                     </div>
                   ) : (
                     <>
-                      <div className="modal-title">Byg struktur — 80 træ · 60 sten</div>
+                      <div className="modal-title">
+                        Byg struktur — {terrainLabels[selectedTerrain ?? ""] ?? "Ukendt terræn"}
+                      </div>
+                      <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: -8, marginBottom: 10 }}>
+                        80 træ · 60 sten
+                      </p>
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {(["mine", "farm", "forestry_camp"] as FieldStructureType[]).map((t) => {
                           const res = structureResourceMap[t];
@@ -710,16 +735,19 @@ export default function KingView({
                               : amountFor(roleResources, res.code);
                           const caps = res.scope === "kingdom" ? kingdomCaps : roleCaps;
                           const pct = utilizationFor(amount, caps, res.code);
+                          const terrainPct = terrainYieldFor(terrainYields, t, selectedTerrain ?? "");
 
                           return (
                             <button
                               key={t}
                               className="btn btn--primary modal-option"
-                              disabled={isPlacePending}
+                              disabled={isPlacePending || terrainPct === 0}
                               onClick={() => handlePlaceStructure(t)}
                             >
                               <span>{structureTypeLabels[t]}</span>
-                              <span className="modal-option__hint">{pct}% udnyttelse</span>
+                              <span className="modal-option__hint">
+                                {terrainPct}% udbytte her · {pct}% udnyttelse
+                              </span>
                             </button>
                           );
                         })}
