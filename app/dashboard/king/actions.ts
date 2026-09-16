@@ -48,6 +48,23 @@ export async function placeFieldStructure(
   return { structureId: data as string };
 }
 
+export async function upgradeFieldStructure(
+  roleProfileId: string,
+  structureId: string
+): Promise<{ error?: string; level?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("upgrade_field_structure", {
+    p_role_profile_id: roleProfileId,
+    p_structure_id: structureId,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { level: data as number };
+}
+
 export async function setTaxRate(
   roleProfileId: string,
   taxRate: number
