@@ -3,7 +3,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { upgradeBuilding, placeFieldStructure, type FieldStructureType } from "./actions";
+import { upgradeBuilding, placeFieldStructure, setTaxRate, type FieldStructureType } from "./actions";
 import SkillsPanel from "../skills-panel";
 import { resourceLabels } from "../resource-labels";
 import MapGrid from "../map-grid";
@@ -38,6 +38,7 @@ type Tile = { id: string; x: number; y: number; terrain: string };
 type VisibilityRow = { tile_id: string; visibility: "unknown" | "scouted" | "visible" };
 type OwnershipRow = { tile_id: string; status: string; owner_realm_id: string | null };
 type StructureRow = { tile_id: string; structure_type: string; level: number };
+type Population = { population: number; cap: number; growth_rate: number };
 
 const structureTypeLabels: Record<FieldStructureType, string> = {
   mine: "Mine",
@@ -80,6 +81,44 @@ function prereqStatus(
     met: prereqLevel >= info.requires_level,
     label: `${prereqLabel} niveau ${info.requires_level}`,
   };
+}
+
+function buildingStats(
+  type: BuildingType,
+  displayLevel: number,
+  taxRate: number,
+  population: Population
+): { label: string; value: string }[] {
+  switch (type) {
+    case "keep":
+      return [
+        { label: "Skattetryk", value: `${taxRate}%` },
+        {
+          label: "Indbyggere",
+          value: `${Math.floor(population.population)} / ${Math.floor(population.cap)}`,
+        },
+      ];
+    case "housing":
+      return [{ label: "Befolkningsloft", value: `${150 + displayLevel * 50}` }];
+    case "storehouse":
+      return [{ label: "Lagerkapacitet (Mad/Træ/Sten)", value: `${1000 + displayLevel * 300}` }];
+    case "walls":
+      return [{ label: "Forsvarsbonus — venter på kampsystemet", value: `+${displayLevel * 3}%` }];
+    case "barracks":
+      return [
+        { label: "Garnisonskapacitet — venter på hær-systemet", value: `${displayLevel * 50}` },
+      ];
+    case "stable":
+      return [
+        { label: "Marchbonus — venter på hær-systemet", value: `+${displayLevel * 5}%` },
+      ];
+    case "kitchen":
+      return [
+        { label: "Madforbrug — venter på hær-systemet", value: `−${displayLevel * 2}%` },
+      ];
+    default:
+      return [];
+  }
 }
 
 function timeRemaining(expiresAt: string | null) {
@@ -132,6 +171,8 @@ export default function KingView({
   visibility,
   ownership,
   structures,
+  taxRate,
+  population,
 }: {
   legitimacy: number;
   roleProfileId: string | null;
@@ -148,14 +189,19 @@ export default function KingView({
   visibility: VisibilityRow[];
   ownership: OwnershipRow[];
   structures: StructureRow[];
+  taxRate: number;
+  population: Population;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Slot");
   const [error, setError] = useState<string | null>(null);
   const [selectedTile, setSelectedTile] = useState<string | null>(null);
   const [placeError, setPlaceError] = useState<string | null>(null);
+  const [taxSlider, setTaxSlider] = useState(taxRate);
+  const [taxError, setTaxError] = useState<string | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPlacePending, startPlaceTransition] = useTransition();
+  const [isTaxPending, startTaxTransition] = useTransition();
 
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
@@ -221,6 +267,20 @@ export default function KingView({
     });
   }
 
+  function handleSetTaxRate(value: number) {
+    if (!roleProfileId) return;
+    setTaxSlider(value);
+    setTaxError(null);
+    startTaxTransition(async () => {
+      const result = await setTaxRate(roleProfileId, value);
+      if (result.error) {
+        setTaxError(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
   return (
     <div className="dashboard">
       <aside className="panel-left">
@@ -235,6 +295,34 @@ export default function KingView({
             <span className="stat-row__value">
               {garrison.reduce((sum, u) => sum + u.count, 0)}
             </span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">Indbyggere</span>
+            <span className="stat-row__value">
+              {Math.floor(population.population).toLocaleString("da-DK")} / {Math.floor(population.cap)}
+            </span>
+          </div>
+
+          <div style={{ marginTop: 14 }}>
+            <div className="stat-row__label" style={{ marginBottom: 6 }}>
+              Skattetryk — {taxSlider}%
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={taxSlider}
+              disabled={isTaxPending || !roleProfileId}
+              onChange={(e) => setTaxSlider(Number(e.target.value))}
+              onMouseUp={(e) => handleSetTaxRate(Number((e.target as HTMLInputElement).value))}
+              onTouchEnd={(e) => handleSetTaxRate(Number((e.target as HTMLInputElement).value))}
+              style={{ width: "100%" }}
+            />
+            {taxError && (
+              <p className="auth-message auth-message--error" style={{ marginTop: 6 }}>
+                {taxError}
+              </p>
+            )}
           </div>
         </div>
 
@@ -318,7 +406,13 @@ export default function KingView({
                   >
                     {info.description}
                   </p>
-                  <div className="progress">
+                  {buildingStats(type, displayLevel, taxSlider, population).map((s) => (
+                    <div className="stat-row" key={s.label} style={{ padding: "4px 0" }}>
+                      <span className="stat-row__label">{s.label}</span>
+                      <span className="stat-row__value">{s.value}</span>
+                    </div>
+                  ))}
+                  <div className="progress" style={{ marginTop: 6 }}>
                     <div
                       className="progress__fill"
                       style={{ width: `${(builtLevel / 30) * 100}%` }}
