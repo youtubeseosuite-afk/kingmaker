@@ -64,3 +64,37 @@ export async function setTaxRate(
 
   return {};
 }
+
+export async function queueWeaponProduction(
+  roleProfileId: string,
+  weaponTemplateId: string,
+  quantity: number
+): Promise<{ error?: string; queueId?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("queue_weapon_production", {
+    p_role_profile_id: roleProfileId,
+    p_weapon_template_id: weaponTemplateId,
+    p_quantity: quantity,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { queueId: data as string };
+}
+
+export async function collectWeaponProduction(
+  queueId: string
+): Promise<{ error?: string; quantity?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("collect_weapon_production", {
+    p_queue_id: queueId,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { quantity: data?.quantity };
+}
