@@ -131,6 +131,27 @@ function terrainYieldFor(terrainYields: TerrainYield[], structureType: string, t
   return row ? Math.round(row.yield_multiplier * 100) : 100;
 }
 
+function neighborBonusFor(
+  structures: StructureRow[],
+  tiles: Tile[],
+  selectedTileId: string,
+  structureType: string
+) {
+  const tile = tiles.find((t) => t.id === selectedTileId);
+  if (!tile) return { count: 0, pct: 0 };
+
+  let count = 0;
+  for (const s of structures) {
+    if (s.structure_type !== structureType || s.tile_id === selectedTileId) continue;
+    const st = tiles.find((t) => t.id === s.tile_id);
+    if (!st) continue;
+    if (Math.abs(st.x - tile.x) <= 1 && Math.abs(st.y - tile.y) <= 1) count++;
+  }
+
+  const capped = Math.min(4, count);
+  return { count: capped, pct: capped * 10 };
+}
+
 function amountFor(rows: ResourceRow[], code: string) {
   return rows.find((r) => r.resource_code === code)?.amount ?? 0;
 }
@@ -736,6 +757,7 @@ export default function KingView({
                           const caps = res.scope === "kingdom" ? kingdomCaps : roleCaps;
                           const pct = utilizationFor(amount, caps, res.code);
                           const terrainPct = terrainYieldFor(terrainYields, t, selectedTerrain ?? "");
+                          const neighbor = neighborBonusFor(structures, tiles, selectedTile, t);
 
                           return (
                             <button
@@ -746,7 +768,11 @@ export default function KingView({
                             >
                               <span>{structureTypeLabels[t]}</span>
                               <span className="modal-option__hint">
-                                {terrainPct}% udbytte her · {pct}% udnyttelse
+                                {terrainPct}% terræn
+                                {neighbor.count > 0 &&
+                                  ` · +${neighbor.pct}% fra ${neighbor.count} nabo${neighbor.count > 1 ? "er" : ""}`}
+                                {" · "}
+                                {pct}% udnyttelse
                               </span>
                             </button>
                           );
