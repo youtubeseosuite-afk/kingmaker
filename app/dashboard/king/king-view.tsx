@@ -9,7 +9,8 @@ import {
   setTaxRate,
   queueWeaponProduction,
   collectWeaponProduction,
-  type FieldStructureType,
+  trainUnits,
+  collectTraining,
   type FieldStructureType,
 } from "./actions";
 import SkillsPanel from "../skills-panel";
@@ -70,6 +71,22 @@ type WeaponSetRow = {
   weapon_template_id: string;
   quantity: number;
   equipped_quantity: number;
+};
+type GarrisonRow = { id: string; unit_type: string; quantity: number };
+type UnitTypeInfo = {
+  code: string;
+  display_name: string;
+  base_cp: number;
+  training_time_seconds: number;
+  training_cost_food: number;
+};
+type TrainingQueueRow = {
+  id: string;
+  unit_type: string;
+  quantity: number;
+  started_at: string;
+  completes_at: string;
+  collected: boolean;
 };
 
 const tierLabels: Record<string, string> = {
@@ -168,12 +185,6 @@ function timeRemaining(expiresAt: string | null) {
   return `${hours}t ${minutes}m`;
 }
 
-const garrison = [
-  { name: "Fodfolk", count: 240 },
-  { name: "Kavaleri", count: 60 },
-  { name: "Bueskytter", count: 90 },
-];
-
 const events = [
   { time: "14:02", text: "Spejder rapporterer ukendt hær ved (34, 12)" },
   { time: "13:20", text: "Prioren har udstedt en velsignelse over garnisonen" },
@@ -214,6 +225,10 @@ export default function KingView({
   weaponTemplates,
   productionQueue,
   weaponSets,
+  garrison,
+  unitTypes,
+  trainingQueue,
+  armyCp,
 }: {
   legitimacy: number;
   roleProfileId: string | null;
@@ -235,6 +250,10 @@ export default function KingView({
   weaponTemplates: WeaponTemplate[];
   productionQueue: QueueRow[];
   weaponSets: WeaponSetRow[];
+  garrison: GarrisonRow[];
+  unitTypes: UnitTypeInfo[];
+  trainingQueue: TrainingQueueRow[];
+  armyCp: number;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Slot");
   const [error, setError] = useState<string | null>(null);
@@ -245,12 +264,16 @@ export default function KingView({
   const [settingsBuilding, setSettingsBuilding] = useState<BuildingType>("keep");
   const [weaponError, setWeaponError] = useState<string | null>(null);
   const [queueQuantities, setQueueQuantities] = useState<Record<string, string>>({});
+  const [trainError, setTrainError] = useState<string | null>(null);
+  const [trainQuantities, setTrainQuantities] = useState<Record<string, string>>({});
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPlacePending, startPlaceTransition] = useTransition();
   const [isTaxPending, startTaxTransition] = useTransition();
   const [isQueuePending, startQueueTransition] = useTransition();
   const [isCollectWeaponPending, startCollectWeaponTransition] = useTransition();
+  const [isTrainPending, startTrainTransition] = useTransition();
+  const [isCollectTrainingPending, startCollectTrainingTransition] = useTransition();
 
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
@@ -359,6 +382,33 @@ export default function KingView({
     });
   }
 
+  function handleTrain(unitType: string) {
+    if (!roleProfileId) return;
+    const qty = Number(trainQuantities[unitType] ?? "1");
+    if (qty <= 0) return;
+    setTrainError(null);
+    startTrainTransition(async () => {
+      const result = await trainUnits(roleProfileId, unitType, qty);
+      if (result.error) {
+        setTrainError(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
+  function handleCollectTraining(queueId: string) {
+    setTrainError(null);
+    startCollectTrainingTransition(async () => {
+      const result = await collectTraining(queueId);
+      if (result.error) {
+        setTrainError(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
   return (
     <div className="dashboard">
       <aside className="panel-left">
@@ -371,7 +421,13 @@ export default function KingView({
           <div className="stat-row">
             <span className="stat-row__label">Garnison, i alt</span>
             <span className="stat-row__value">
-              {garrison.reduce((sum, u) => sum + u.count, 0)}
+              {garrison.reduce((sum, u) => sum + u.quantity, 0)}
+            </span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-row__label">Hærens samlede CP</span>
+            <span className="stat-row__value stat-row__value--accent">
+              {Math.floor(armyCp)}
             </span>
           </div>
           <div className="stat-row">
@@ -504,12 +560,90 @@ export default function KingView({
 
         {activeTab === "Hær" && (
           <div>
-            {garrison.map((unit) => (
-              <div className="stat-row" key={unit.name}>
-                <span className="stat-row__label">{unit.name}</span>
-                <span className="stat-row__value">{unit.count}</span>
+            {trainError && (
+              <p className="auth-message auth-message--error">{trainError}</p>
+            )}
+
+            {garrison.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div className="panel-title">Garnison</div>
+                {garrison.map((unit) => {
+                  const info = unitTypes.find((u) => u.code === unit.unit_type);
+                  return (
+                    <div className="stat-row" key={unit.id}>
+                      <span className="stat-row__label">{info?.display_name ?? unit.unit_type}</span>
+                      <span className="stat-row__value">{unit.quantity}</span>
+                    </div>
+                  );
+                })}
               </div>
-            ))}
+            )}
+
+            {trainingQueue.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div className="panel-title">Under træning</div>
+                {trainingQueue.map((q) => {
+                  const info = unitTypes.find((u) => u.code === q.unit_type);
+                  const done = new Date(q.completes_at).getTime() <= Date.now();
+                  return (
+                    <div className="stat-row" key={q.id}>
+                      <span className="stat-row__label">
+                        {q.quantity}x {info?.display_name ?? q.unit_type}
+                      </span>
+                      <span className="stat-row__value">
+                        {done ? (
+                          <button
+                            className="btn btn--primary"
+                            disabled={isCollectTrainingPending}
+                            onClick={() => handleCollectTraining(q.id)}
+                          >
+                            Hent
+                          </button>
+                        ) : (
+                          timeRemaining(q.completes_at)
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="panel-title">Træn tropper</div>
+            {unitTypes.map((u) => {
+              const qty = trainQuantities[u.code] ?? "10";
+              const requiresStable = u.code === "cavalry";
+              return (
+                <div className="build-project" key={u.code}>
+                  <div className="build-project__head">
+                    <span className="build-project__name">{u.display_name}</span>
+                    <span className="build-project__eta">CP {u.base_cp}</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "4px 0" }}>
+                    {u.training_cost_food} mad pr. stk · {Math.round(u.training_time_seconds / 60)} min pr. stk
+                    {requiresStable && " · kræver Stalden"}
+                  </p>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <input
+                      className="command-input"
+                      type="number"
+                      min={1}
+                      value={qty}
+                      onChange={(e) =>
+                        setTrainQuantities({ ...trainQuantities, [u.code]: e.target.value })
+                      }
+                    />
+                    <button
+                      className="btn btn--primary"
+                      disabled={isTrainPending}
+                      onClick={() => handleTrain(u.code)}
+                    >
+                      Træn
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
