@@ -862,7 +862,7 @@ export default function KingView({
                           </span>
                         </div>
                         <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "4px 0 6px" }}>
-                          {Math.round(output * 10) / 10} {resourceLabels[structureOutputResource[type]]}/time
+                          {Math.round(output * 10) / 10} {resourceLabels[structureResourceMap[type]]}/time
                           {" · "}
                           {terrainPct}% terræn
                           {neighbor.count > 0 &&
