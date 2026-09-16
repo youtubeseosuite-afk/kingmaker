@@ -18,7 +18,7 @@ export default async function KingPage() {
 
   const { data: realm } = await supabase
     .from("realms")
-    .select("id")
+    .select("id, world_id")
     .eq("player_id", user.id)
     .limit(1)
     .maybeSingle();
@@ -83,6 +83,32 @@ export default async function KingPage() {
         .or(`expires_at.is.null,expires_at.gt.${nowIso}`)
     : { data: [] };
 
+  const { data: tiles } = await supabase
+    .from("tiles")
+    .select("id, x, y, terrain")
+    .eq("world_id", realm.world_id)
+    .lt("x", 20)
+    .lt("y", 20);
+
+  const { data: visibility } = await supabase
+    .from("realm_tile_visibility")
+    .select("tile_id, visibility")
+    .eq("realm_id", realm.id);
+
+  const tileIds = (tiles ?? []).map((t) => t.id);
+  const { data: ownership } =
+    tileIds.length > 0
+      ? await supabase
+          .from("tile_ownership")
+          .select("tile_id, status, owner_realm_id")
+          .in("tile_id", tileIds)
+      : { data: [] };
+
+  const { data: structures } = await supabase
+    .from("field_structures")
+    .select("tile_id, structure_type, level")
+    .eq("realm_id", realm.id);
+
   return (
     <KingView
       legitimacy={roleProfile?.legitimacy ?? 0}
@@ -96,6 +122,10 @@ export default async function KingPage() {
       unlockedCodes={(unlocks ?? []).map((u) => u.skill_code)}
       realmId={realm.id}
       activeModifiers={activeModifiers ?? []}
+      tiles={tiles ?? []}
+      visibility={visibility ?? []}
+      ownership={ownership ?? []}
+      structures={structures ?? []}
     />
   );
 }
