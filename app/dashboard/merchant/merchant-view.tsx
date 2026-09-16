@@ -4,7 +4,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  sendGoldToKing,
+  sendResourceToKing,
   upgradeBuilding,
   collectProduction,
   sellToMarket,
@@ -149,6 +149,7 @@ export default function MerchantView({
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Handel");
   const [amount, setAmount] = useState("100");
+  const [sendResourceCode, setSendResourceCode] = useState("gold");
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [buildError, setBuildError] = useState<string | null>(null);
@@ -165,12 +166,13 @@ export default function MerchantView({
   const gold = amountFor(roleResources, "gold");
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
+  const sendableAmount = amountFor(roleResources, sendResourceCode);
   const parsedAmount = Number(amount);
   const canSend =
     roleProfileId !== null &&
     kingRoleProfileId !== null &&
     parsedAmount > 0 &&
-    parsedAmount <= gold;
+    parsedAmount <= sendableAmount;
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -179,10 +181,11 @@ export default function MerchantView({
     setError(null);
     setSent(false);
     startTransition(async () => {
-      const result = await sendGoldToKing(
+      const result = await sendResourceToKing(
         worldId,
         roleProfileId,
         kingRoleProfileId,
+        sendResourceCode,
         parsedAmount
       );
       if (result.error) {
@@ -299,15 +302,30 @@ export default function MerchantView({
             onSubmit={handleSend}
             style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}
           >
-            <label className="auth-form__label" htmlFor="gold-amount">
-              Overfør guld til Kongen
+            <label className="auth-form__label" htmlFor="send-resource">
+              Overfør til Kongen
             </label>
+            <select
+              className="command-input"
+              id="send-resource"
+              value={sendResourceCode}
+              onChange={(e) => {
+                setSendResourceCode(e.target.value);
+                setSent(false);
+              }}
+            >
+              <option value="gold">{resourceLabels.gold}</option>
+              <option value="iron">{resourceLabels.iron}</option>
+            </select>
+            <p style={{ fontSize: 11, color: "var(--text-faint)" }}>
+              Du har {Math.floor(sendableAmount).toLocaleString("da-DK")}
+            </p>
             <input
               className="command-input"
               id="gold-amount"
               type="number"
               min={1}
-              max={Math.floor(gold)}
+              max={Math.floor(sendableAmount)}
               value={amount}
               onChange={(e) => {
                 setAmount(e.target.value);
@@ -319,7 +337,9 @@ export default function MerchantView({
             </button>
             {error && <p className="auth-message auth-message--error">{error}</p>}
             {sent && !error && (
-              <p className="auth-message auth-message--success">Guld overført til Kongen.</p>
+              <p className="auth-message auth-message--success">
+                {resourceLabels[sendResourceCode] ?? sendResourceCode} overført til Kongen.
+              </p>
             )}
           </form>
         </div>
