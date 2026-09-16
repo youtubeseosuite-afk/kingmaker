@@ -152,7 +152,7 @@ type Skill = {
   offensive: boolean;
 };
 
-const tabs = ["Slot", "Hær", "Land", "Evner"] as const;
+const tabs = ["Slot", "Hær", "Land", "Indstillinger", "Evner"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function KingView({
@@ -198,6 +198,7 @@ export default function KingView({
   const [placeError, setPlaceError] = useState<string | null>(null);
   const [taxSlider, setTaxSlider] = useState(taxRate);
   const [taxError, setTaxError] = useState<string | null>(null);
+  const [settingsBuilding, setSettingsBuilding] = useState<BuildingType>("keep");
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPlacePending, startPlaceTransition] = useTransition();
@@ -302,28 +303,13 @@ export default function KingView({
               {Math.floor(population.population).toLocaleString("da-DK")} / {Math.floor(population.cap)}
             </span>
           </div>
-
-          <div style={{ marginTop: 14 }}>
-            <div className="stat-row__label" style={{ marginBottom: 6 }}>
-              Skattetryk — {taxSlider}%
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              value={taxSlider}
-              disabled={isTaxPending || !roleProfileId}
-              onChange={(e) => setTaxSlider(Number(e.target.value))}
-              onMouseUp={(e) => handleSetTaxRate(Number((e.target as HTMLInputElement).value))}
-              onTouchEnd={(e) => handleSetTaxRate(Number((e.target as HTMLInputElement).value))}
-              style={{ width: "100%" }}
-            />
-            {taxError && (
-              <p className="auth-message auth-message--error" style={{ marginTop: 6 }}>
-                {taxError}
-              </p>
-            )}
+          <div className="stat-row">
+            <span className="stat-row__label">Skattetryk</span>
+            <span className="stat-row__value">{taxSlider}%</span>
           </div>
+          <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>
+            Justeres under Indstillinger
+          </p>
         </div>
 
         <div className="sidebar-section">
@@ -496,6 +482,86 @@ export default function KingView({
                     </div>
                   </>
                 )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "Indstillinger" && (
+          <div>
+            <label className="auth-form__label" htmlFor="settings-building">
+              Vælg bygning
+            </label>
+            <select
+              className="command-input"
+              id="settings-building"
+              value={settingsBuilding}
+              onChange={(e) => setSettingsBuilding(e.target.value as BuildingType)}
+              style={{ marginBottom: 16, marginTop: 6 }}
+            >
+              {buildingTypes.map((bt) => (
+                <option key={bt.building_type} value={bt.building_type}>
+                  {bt.display_name}
+                </option>
+              ))}
+            </select>
+
+            {settingsBuilding === "keep" ? (
+              <div className="build-project">
+                <div className="panel-title" style={{ marginBottom: 12 }}>
+                  The Keep — Indstillinger
+                </div>
+
+                <div style={{ marginBottom: 22 }}>
+                  <div className="stat-row__label" style={{ marginBottom: 6 }}>
+                    Skattetryk — {taxSlider}%
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={taxSlider}
+                    disabled={isTaxPending || !roleProfileId}
+                    onChange={(e) => setTaxSlider(Number(e.target.value))}
+                    onMouseUp={(e) => handleSetTaxRate(Number((e.target as HTMLInputElement).value))}
+                    onTouchEnd={(e) => handleSetTaxRate(Number((e.target as HTMLInputElement).value))}
+                    style={{ width: "100%" }}
+                  />
+                  <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+                    Højere skat giver mere Guld, men sænker befolkningsvæksten.
+                  </p>
+                  {taxError && (
+                    <p className="auth-message auth-message--error" style={{ marginTop: 6 }}>
+                      {taxError}
+                    </p>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: 22, opacity: 0.5 }}>
+                  <div className="stat-row__label" style={{ marginBottom: 6 }}>
+                    Soldater i byens forsvar
+                  </div>
+                  <input type="range" min={0} max={100} disabled style={{ width: "100%" }} />
+                  <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+                    Kræver hær-systemet — kommer senere.
+                  </p>
+                </div>
+
+                <div style={{ opacity: 0.5 }}>
+                  <div className="stat-row__label" style={{ marginBottom: 6 }}>
+                    General
+                  </div>
+                  <button className="btn" disabled>
+                    Ansæt general
+                  </button>
+                  <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+                    Kræver kommandør-systemet — kommer senere.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div className="placeholder-note">
+                Ingen indstillinger tilgængelige for denne bygning endnu.
               </div>
             )}
           </div>
