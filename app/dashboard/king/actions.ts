@@ -26,3 +26,24 @@ export async function upgradeBuilding(
 
   return { level: data as number };
 }
+
+export type FieldStructureType = "mine" | "farm" | "forestry_camp";
+
+export async function placeFieldStructure(
+  roleProfileId: string,
+  tileId: string,
+  structureType: FieldStructureType
+): Promise<{ error?: string; structureId?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("place_field_structure", {
+    p_role_profile_id: roleProfileId,
+    p_tile_id: tileId,
+    p_structure_type: structureType,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { structureId: data as string };
+}
