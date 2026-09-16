@@ -18,6 +18,7 @@ import { resourceLabels } from "../resource-labels";
 import MapGrid from "../map-grid";
 
 type ResourceRow = { resource_code: string; amount: number };
+type ResourceCap = { resource_code: string; storage_cap: number };
 type BuildingType =
   | "keep"
   | "walls"
@@ -100,6 +101,18 @@ const structureTypeLabels: Record<FieldStructureType, string> = {
   farm: "Farm",
   forestry_camp: "Skovbrug",
 };
+
+const structureResourceMap: Record<FieldStructureType, { code: string; scope: "kingdom" | "role" }> = {
+  mine: { code: "iron", scope: "role" },
+  farm: { code: "food", scope: "kingdom" },
+  forestry_camp: { code: "wood", scope: "kingdom" },
+};
+
+function utilizationFor(amount: number, caps: ResourceCap[], code: string) {
+  const cap = caps.find((c) => c.resource_code === code)?.storage_cap ?? 1000;
+  if (cap <= 0) return 0;
+  return Math.min(100, Math.round((amount / cap) * 100));
+}
 
 function amountFor(rows: ResourceRow[], code: string) {
   return rows.find((r) => r.resource_code === code)?.amount ?? 0;
@@ -210,6 +223,8 @@ export default function KingView({
   level,
   kingdomResources,
   roleResources,
+  kingdomCaps,
+  roleCaps,
   buildings,
   buildingTypes,
   skills,
@@ -235,6 +250,8 @@ export default function KingView({
   level: number;
   kingdomResources: ResourceRow[];
   roleResources: ResourceRow[];
+  kingdomCaps: ResourceCap[];
+  roleCaps: ResourceCap[];
   buildings: BuildingRow[];
   buildingTypes: BuildingTypeInfo[];
   skills: Skill[];
@@ -661,38 +678,96 @@ export default function KingView({
             </p>
 
             {selectedTile && (
-              <div className="build-project" style={{ marginTop: 12 }}>
-                {placeError && (
-                  <p className="auth-message auth-message--error">{placeError}</p>
-                )}
-                {selectedStructure ? (
-                  <div className="build-project__head">
-                    <span className="build-project__name">
-                      {structureTypeLabels[selectedStructure.type as FieldStructureType] ??
-                        selectedStructure.type}{" "}
-                      — niveau {selectedStructure.level}
-                    </span>
-                  </div>
-                ) : (
-                  <>
+              <div
+                style={{
+                  position: "fixed",
+                  inset: 0,
+                  background: "rgba(0,0,0,0.6)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 50,
+                }}
+                onClick={() => setSelectedTile(null)}
+              >
+                <div
+                  className="build-project"
+                  style={{ maxWidth: 360, width: "90%", position: "relative" }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <button
+                    onClick={() => setSelectedTile(null)}
+                    aria-label="Luk"
+                    style={{
+                      position: "absolute",
+                      top: 6,
+                      right: 8,
+                      background: "none",
+                      border: "none",
+                      fontSize: 20,
+                      lineHeight: 1,
+                      cursor: "pointer",
+                      color: "var(--text-faint)",
+                    }}
+                  >
+                    ×
+                  </button>
+
+                  {placeError && (
+                    <p className="auth-message auth-message--error">{placeError}</p>
+                  )}
+
+                  {selectedStructure ? (
                     <div className="build-project__head">
-                      <span className="build-project__name">Byg struktur</span>
-                      <span className="build-project__eta">80 træ · 60 sten</span>
+                      <span className="build-project__name">
+                        {structureTypeLabels[selectedStructure.type as FieldStructureType] ??
+                          selectedStructure.type}{" "}
+                        — niveau {selectedStructure.level}
+                      </span>
                     </div>
-                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                      {(["mine", "farm", "forestry_camp"] as FieldStructureType[]).map((t) => (
-                        <button
-                          key={t}
-                          className="btn btn--primary"
-                          disabled={isPlacePending}
-                          onClick={() => handlePlaceStructure(t)}
-                        >
-                          {structureTypeLabels[t]}
-                        </button>
-                      ))}
-                    </div>
-                  </>
-                )}
+                  ) : (
+                    <>
+                      <div className="build-project__head">
+                        <span className="build-project__name">Byg struktur</span>
+                        <span className="build-project__eta">80 træ · 60 sten</span>
+                      </div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                        {(["mine", "farm", "forestry_camp"] as FieldStructureType[]).map((t) => {
+                          const res = structureResourceMap[t];
+                          const amount =
+                            res.scope === "kingdom"
+                              ? amountFor(kingdomResources, res.code)
+                              : amountFor(roleResources, res.code);
+                          const caps = res.scope === "kingdom" ? kingdomCaps : roleCaps;
+                          const pct = utilizationFor(amount, caps, res.code);
+
+                          return (
+                            <button
+                              key={t}
+                              className="btn btn--primary"
+                              disabled={isPlacePending}
+                              onClick={() => handlePlaceStructure(t)}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}
+                            >
+                              <span>{structureTypeLabels[t]}</span>
+                              <span style={{ fontSize: 11, opacity: 0.85 }}>
+                                {pct}% udnyttelse
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 10 }}>
+                        Udnyttelse = hvor fyldt dit lager af den ressource er lige nu — lavt tal
+                        betyder mere plads til vækst.
+                      </p>
+                    </>
+                  )}
+                </div>
               </div>
             )}
           </div>
