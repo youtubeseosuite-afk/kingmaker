@@ -3,7 +3,14 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { upgradeBuilding, placeFieldStructure, setTaxRate, type FieldStructureType } from "./actions";
+import {
+  upgradeBuilding,
+  placeFieldStructure,
+  setTaxRate,
+  queueWeaponProduction,
+  collectWeaponProduction,
+  type FieldStructureType,
+} from "./actions";
 import SkillsPanel from "../skills-panel";
 import { resourceLabels } from "../resource-labels";
 import MapGrid from "../map-grid";
@@ -39,6 +46,36 @@ type VisibilityRow = { tile_id: string; visibility: "unknown" | "scouted" | "vis
 type OwnershipRow = { tile_id: string; status: string; owner_realm_id: string | null };
 type StructureRow = { tile_id: string; structure_type: string; level: number };
 type Population = { population: number; cap: number; growth_rate: number };
+type WeaponTemplate = {
+  id: string;
+  name: string;
+  tier: "tier1" | "tier2" | "tier3";
+  unit_type: string;
+  base_cp: number;
+  materials: Record<string, number>;
+  production_seconds: number;
+  min_forge_level: number;
+};
+type QueueRow = {
+  id: string;
+  weapon_template_id: string;
+  quantity: number;
+  started_at: string;
+  completes_at: string;
+  collected: boolean;
+};
+type WeaponSetRow = {
+  id: string;
+  weapon_template_id: string;
+  quantity: number;
+  equipped_quantity: number;
+};
+
+const tierLabels: Record<string, string> = {
+  tier1: "Tier 1",
+  tier2: "Tier 2",
+  tier3: "Tier 3",
+};
 
 const structureTypeLabels: Record<FieldStructureType, string> = {
   mine: "Mine",
@@ -152,7 +189,7 @@ type Skill = {
   offensive: boolean;
 };
 
-const tabs = ["Slot", "Hær", "Land", "Indstillinger", "Evner"] as const;
+const tabs = ["Slot", "Hær", "Land", "Smedje", "Indstillinger", "Evner"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function KingView({
@@ -173,6 +210,9 @@ export default function KingView({
   structures,
   taxRate,
   population,
+  weaponTemplates,
+  productionQueue,
+  weaponSets,
 }: {
   legitimacy: number;
   roleProfileId: string | null;
@@ -191,6 +231,9 @@ export default function KingView({
   structures: StructureRow[];
   taxRate: number;
   population: Population;
+  weaponTemplates: WeaponTemplate[];
+  productionQueue: QueueRow[];
+  weaponSets: WeaponSetRow[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Slot");
   const [error, setError] = useState<string | null>(null);
@@ -199,10 +242,14 @@ export default function KingView({
   const [taxSlider, setTaxSlider] = useState(taxRate);
   const [taxError, setTaxError] = useState<string | null>(null);
   const [settingsBuilding, setSettingsBuilding] = useState<BuildingType>("keep");
+  const [weaponError, setWeaponError] = useState<string | null>(null);
+  const [queueQuantities, setQueueQuantities] = useState<Record<string, string>>({});
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPlacePending, startPlaceTransition] = useTransition();
   const [isTaxPending, startTaxTransition] = useTransition();
+  const [isQueuePending, startQueueTransition] = useTransition();
+  const [isCollectWeaponPending, startCollectWeaponTransition] = useTransition();
 
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
@@ -276,6 +323,35 @@ export default function KingView({
       const result = await setTaxRate(roleProfileId, value);
       if (result.error) {
         setTaxError(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
+  const forgeLevel = levelFor(buildings, "forge" as BuildingType);
+
+  function handleQueueProduction(templateId: string) {
+    if (!roleProfileId) return;
+    const qty = Number(queueQuantities[templateId] ?? "1");
+    if (qty <= 0) return;
+    setWeaponError(null);
+    startQueueTransition(async () => {
+      const result = await queueWeaponProduction(roleProfileId, templateId, qty);
+      if (result.error) {
+        setWeaponError(result.error);
+      } else {
+        router.refresh();
+      }
+    });
+  }
+
+  function handleCollectWeapon(queueId: string) {
+    setWeaponError(null);
+    startCollectWeaponTransition(async () => {
+      const result = await collectWeaponProduction(queueId);
+      if (result.error) {
+        setWeaponError(result.error);
       } else {
         router.refresh();
       }
@@ -484,6 +560,108 @@ export default function KingView({
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "Smedje" && (
+          <div>
+            {weaponError && (
+              <p className="auth-message auth-message--error">{weaponError}</p>
+            )}
+
+            {productionQueue.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div className="panel-title">I gang</div>
+                {productionQueue.map((q) => {
+                  const template = weaponTemplates.find((t) => t.id === q.weapon_template_id);
+                  const done = new Date(q.completes_at).getTime() <= Date.now();
+                  return (
+                    <div className="stat-row" key={q.id}>
+                      <span className="stat-row__label">
+                        {q.quantity}x {template?.name ?? "Ukendt våben"}
+                      </span>
+                      <span className="stat-row__value">
+                        {done ? (
+                          <button
+                            className="btn btn--primary"
+                            disabled={isCollectWeaponPending}
+                            onClick={() => handleCollectWeapon(q.id)}
+                          >
+                            Hent
+                          </button>
+                        ) : (
+                          timeRemaining(q.completes_at)
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {weaponSets.length > 0 && (
+              <div style={{ marginBottom: 20 }}>
+                <div className="panel-title">Våbenlager</div>
+                {weaponSets.map((ws) => {
+                  const template = weaponTemplates.find((t) => t.id === ws.weapon_template_id);
+                  return (
+                    <div className="stat-row" key={ws.id}>
+                      <span className="stat-row__label">{template?.name ?? "Ukendt våben"}</span>
+                      <span className="stat-row__value">
+                        {ws.quantity - ws.equipped_quantity} klar · {ws.equipped_quantity} udrustet
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="panel-title">Producér</div>
+            {weaponTemplates.map((t) => {
+              const locked = forgeLevel < t.min_forge_level;
+              const qty = queueQuantities[t.id] ?? "1";
+
+              return (
+                <div className="build-project" key={t.id}>
+                  <div className="build-project__head">
+                    <span className="build-project__name">
+                      {t.name} ({tierLabels[t.tier]})
+                    </span>
+                    <span className="build-project__eta">CP {t.base_cp}</span>
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "4px 0" }}>
+                    {Object.entries(t.materials)
+                      .map(([k, v]) => `${v} ${resourceLabels[k] ?? k}`)
+                      .join(" · ")}{" "}
+                    pr. stk · {Math.round(t.production_seconds / 60)} min pr. stk
+                  </p>
+                  {locked ? (
+                    <p style={{ fontSize: 12, color: "var(--text-faint)" }}>
+                      Kræver Smedjen niveau {t.min_forge_level} (har {forgeLevel})
+                    </p>
+                  ) : (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <input
+                        className="command-input"
+                        type="number"
+                        min={1}
+                        value={qty}
+                        onChange={(e) =>
+                          setQueueQuantities({ ...queueQuantities, [t.id]: e.target.value })
+                        }
+                      />
+                      <button
+                        className="btn btn--primary"
+                        disabled={isQueuePending}
+                        onClick={() => handleQueueProduction(t.id)}
+                      >
+                        Producér
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
