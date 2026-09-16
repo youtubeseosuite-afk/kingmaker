@@ -47,3 +47,20 @@ export async function placeFieldStructure(
 
   return { structureId: data as string };
 }
+
+export async function setTaxRate(
+  roleProfileId: string,
+  taxRate: number
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("set_tax_rate", {
+    p_role_profile_id: roleProfileId,
+    p_tax_rate: taxRate,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return {};
+}
