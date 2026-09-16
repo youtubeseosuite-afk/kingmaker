@@ -678,37 +678,12 @@ export default function KingView({
             </p>
 
             {selectedTile && (
-              <div
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  background: "rgba(0,0,0,0.6)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 50,
-                }}
-                onClick={() => setSelectedTile(null)}
-              >
-                <div
-                  className="build-project"
-                  style={{ maxWidth: 360, width: "90%", position: "relative" }}
-                  onClick={(e) => e.stopPropagation()}
-                >
+              <div className="modal-backdrop" onClick={() => setSelectedTile(null)}>
+                <div className="modal-card" onClick={(e) => e.stopPropagation()}>
                   <button
+                    className="modal-close"
                     onClick={() => setSelectedTile(null)}
                     aria-label="Luk"
-                    style={{
-                      position: "absolute",
-                      top: 6,
-                      right: 8,
-                      background: "none",
-                      border: "none",
-                      fontSize: 20,
-                      lineHeight: 1,
-                      cursor: "pointer",
-                      color: "var(--text-faint)",
-                    }}
                   >
                     ×
                   </button>
@@ -718,20 +693,15 @@ export default function KingView({
                   )}
 
                   {selectedStructure ? (
-                    <div className="build-project__head">
-                      <span className="build-project__name">
-                        {structureTypeLabels[selectedStructure.type as FieldStructureType] ??
-                          selectedStructure.type}{" "}
-                        — niveau {selectedStructure.level}
-                      </span>
+                    <div className="modal-title">
+                      {structureTypeLabels[selectedStructure.type as FieldStructureType] ??
+                        selectedStructure.type}{" "}
+                      — niveau {selectedStructure.level}
                     </div>
                   ) : (
                     <>
-                      <div className="build-project__head">
-                        <span className="build-project__name">Byg struktur</span>
-                        <span className="build-project__eta">80 træ · 60 sten</span>
-                      </div>
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+                      <div className="modal-title">Byg struktur — 80 træ · 60 sten</div>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                         {(["mine", "farm", "forestry_camp"] as FieldStructureType[]).map((t) => {
                           const res = structureResourceMap[t];
                           const amount =
@@ -744,19 +714,12 @@ export default function KingView({
                           return (
                             <button
                               key={t}
-                              className="btn btn--primary"
+                              className="btn btn--primary modal-option"
                               disabled={isPlacePending}
                               onClick={() => handlePlaceStructure(t)}
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                              }}
                             >
                               <span>{structureTypeLabels[t]}</span>
-                              <span style={{ fontSize: 11, opacity: 0.85 }}>
-                                {pct}% udnyttelse
-                              </span>
+                              <span className="modal-option__hint">{pct}% udnyttelse</span>
                             </button>
                           );
                         })}
