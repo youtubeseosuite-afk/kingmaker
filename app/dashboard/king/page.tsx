@@ -121,6 +121,10 @@ export default async function KingPage() {
     .select("tile_id, structure_type, level")
     .eq("realm_id", realm.id);
 
+  const { data: terrainYields } = await supabase
+    .from("structure_terrain_yield")
+    .select("structure_type, terrain, yield_multiplier");
+
   const { data: population } = await supabase.rpc("get_realm_population", {
     p_realm_id: realm.id,
   });
@@ -179,6 +183,7 @@ export default async function KingPage() {
       roleResources={roleResources ?? []}
       kingdomCaps={kingdomCaps ?? []}
       roleCaps={roleCaps ?? []}
+      terrainYields={terrainYields ?? []}
       buildings={buildings ?? []}
       buildingTypes={buildingTypes ?? []}
       skills={skills ?? []}
