@@ -11,6 +11,7 @@ import {
   collectWeaponProduction,
   trainUnits,
   collectTraining,
+  upgradeFieldStructure,
   type FieldStructureType,
 } from "./actions";
 import SkillsPanel from "../skills-panel";
@@ -57,7 +58,7 @@ type ActiveModifier = {
 type Tile = { id: string; x: number; y: number; terrain: string };
 type VisibilityRow = { tile_id: string; visibility: "unknown" | "scouted" | "visible" };
 type OwnershipRow = { tile_id: string; status: string; owner_realm_id: string | null };
-type StructureRow = { tile_id: string; structure_type: string; level: number };
+type StructureRow = { id: string; tile_id: string; structure_type: string; level: number };
 type Population = { population: number; cap: number; growth_rate: number };
 type WeaponTemplate = {
   id: string;
@@ -116,6 +117,18 @@ const structureResourceMap: Record<FieldStructureType, { code: string; scope: "k
   mine: { code: "iron", scope: "role" },
   farm: { code: "food", scope: "kingdom" },
   forestry_camp: { code: "wood", scope: "kingdom" },
+};
+
+const structureBaseYield: Record<string, number> = {
+  mine: 5,
+  farm: 8,
+  forestry_camp: 6,
+};
+
+const structureTypePlural: Record<string, string> = {
+  mine: "Miner",
+  farm: "Farme",
+  forestry_camp: "Skovbrug",
 };
 
 function utilizationFor(amount: number, caps: ResourceCap[], code: string) {
@@ -252,7 +265,7 @@ type Skill = {
   offensive: boolean;
 };
 
-const tabs = ["Slot", "Hær", "Land", "Smedje", "Indstillinger", "Evner"] as const;
+const tabs = ["Slot", "Hær", "Land", "Produktion", "Smedje", "Indstillinger", "Evner"] as const;
 type Tab = (typeof tabs)[number];
 
 export default function KingView({
@@ -323,6 +336,7 @@ export default function KingView({
   const [queueQuantities, setQueueQuantities] = useState<Record<string, string>>({});
   const [trainError, setTrainError] = useState<string | null>(null);
   const [trainQuantities, setTrainQuantities] = useState<Record<string, string>>({});
+  const [structureUpgradeError, setStructureUpgradeError] = useState<string | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [isPlacePending, startPlaceTransition] = useTransition();
@@ -331,6 +345,7 @@ export default function KingView({
   const [isCollectWeaponPending, startCollectWeaponTransition] = useTransition();
   const [isTrainPending, startTrainTransition] = useTransition();
   const [isCollectTrainingPending, startCollectTrainingTransition] = useTransition();
+  const [isStructureUpgradePending, startStructureUpgradeTransition] = useTransition();
 
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
@@ -392,6 +407,19 @@ export default function KingView({
         setPlaceError(result.error);
       } else {
         setSelectedTile(null);
+        router.refresh();
+      }
+    });
+  }
+
+  function handleUpgradeStructure(structureId: string) {
+    if (!roleProfileId) return;
+    setStructureUpgradeError(null);
+    startStructureUpgradeTransition(async () => {
+      const result = await upgradeFieldStructure(roleProfileId, structureId);
+      if (result.error) {
+        setStructureUpgradeError(result.error);
+      } else {
         router.refresh();
       }
     });
@@ -787,6 +815,81 @@ export default function KingView({
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {activeTab === "Produktion" && (
+          <div>
+            {structureUpgradeError && (
+              <p className="auth-message auth-message--error">{structureUpgradeError}</p>
+            )}
+            {structures.length === 0 && (
+              <div className="placeholder-note">
+                Ingen strukturer bygget endnu — placér en Mine, Farm eller Skovbrug under Land.
+              </div>
+            )}
+            {(["mine", "farm", "forestry_camp"] as FieldStructureType[]).map((type) => {
+              const ofType = structures.filter((s) => s.structure_type === type);
+              if (ofType.length === 0) return null;
+
+              return (
+                <div key={type} style={{ marginBottom: 20 }}>
+                  <div className="panel-title">{structureTypePlural[type]}</div>
+                  {ofType.map((s) => {
+                    const tile = tiles.find((t) => t.id === s.tile_id);
+                    const terrain = tile?.terrain ?? "";
+                    const terrainPct = terrainYieldFor(terrainYields, type, terrain);
+                    const neighbor = neighborBonusFor(structures, tiles, s.tile_id, type);
+                    const output =
+                      s.level *
+                      (structureBaseYield[type] ?? 0) *
+                      (terrainPct / 100) *
+                      (1 + neighbor.pct / 100);
+                    const woodCost = 80 * s.level;
+                    const stoneCost = 60 * s.level;
+                    const maxed = s.level >= 30;
+                    const canAfford = wood >= woodCost && stone >= stoneCost;
+
+                    return (
+                      <div className="build-project" key={s.id}>
+                        <div className="build-project__head">
+                          <span className="build-project__name">
+                            {tile ? `(${tile.x}, ${tile.y})` : "Ukendt felt"} —{" "}
+                            {terrainLabels[terrain] ?? terrain} — niveau {s.level}
+                          </span>
+                          <span className="build-project__eta">
+                            {maxed ? "Maks niveau" : `${woodCost} træ · ${stoneCost} sten`}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 12, color: "var(--text-faint)", margin: "4px 0 6px" }}>
+                          {Math.round(output * 10) / 10} {resourceLabels[structureOutputResource[type]]}/time
+                          {" · "}
+                          {terrainPct}% terræn
+                          {neighbor.count > 0 &&
+                            ` · +${neighbor.pct}% fra ${neighbor.count} nabo${neighbor.count > 1 ? "er" : ""}`}
+                        </p>
+                        <div className="progress">
+                          <div
+                            className="progress__fill"
+                            style={{ width: `${(s.level / 30) * 100}%` }}
+                          />
+                        </div>
+                        {!maxed && (
+                          <button
+                            className="btn btn--primary"
+                            style={{ marginTop: 8 }}
+                            disabled={isStructureUpgradePending || !canAfford}
+                            onClick={() => handleUpgradeStructure(s.id)}
+                          >
+                            {canAfford ? "Opgrader" : "Ikke råd"}
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
           </div>
         )}
 
