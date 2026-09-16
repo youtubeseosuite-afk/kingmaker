@@ -29,7 +29,7 @@ export default async function KingPage() {
 
   const { data: roleProfile } = await supabase
     .from("role_profiles")
-    .select("id, legitimacy, level")
+    .select("id, legitimacy, level, tax_rate")
     .eq("realm_id", realm.id)
     .eq("role", "king")
     .maybeSingle();
@@ -109,11 +109,17 @@ export default async function KingPage() {
     .select("tile_id, structure_type, level")
     .eq("realm_id", realm.id);
 
+  const { data: population } = await supabase.rpc("get_realm_population", {
+    p_realm_id: realm.id,
+  });
+
   return (
     <KingView
       legitimacy={roleProfile?.legitimacy ?? 0}
       roleProfileId={roleProfile?.id ?? null}
       level={roleProfile?.level ?? 1}
+      taxRate={roleProfile?.tax_rate ?? 10}
+      population={population ?? { population: 0, cap: 0, growth_rate: 0 }}
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
       buildings={buildings ?? []}
