@@ -3,10 +3,11 @@
 
 import { createClient } from "../../../lib/supabase/server";
 
-export async function sendGoldToKing(
+export async function sendResourceToKing(
   worldId: string,
   fromRoleProfileId: string,
   toRoleProfileId: string,
+  resourceCode: string,
   amount: number
 ): Promise<{ error?: string }> {
   const supabase = await createClient();
@@ -14,7 +15,7 @@ export async function sendGoldToKing(
     p_world_id: worldId,
     p_from_role_profile_id: fromRoleProfileId,
     p_to_role_profile_id: toRoleProfileId,
-    p_resource_code: "gold",
+    p_resource_code: resourceCode,
     p_amount: amount,
     p_type: "role_transfer",
     p_reference_id: null,
