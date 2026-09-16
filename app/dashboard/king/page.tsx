@@ -113,6 +113,26 @@ export default async function KingPage() {
     p_realm_id: realm.id,
   });
 
+  const { data: weaponTemplates } = await supabase
+    .from("weapon_templates")
+    .select("id, name, tier, unit_type, base_cp, materials, production_seconds, min_forge_level")
+    .order("min_forge_level");
+
+  const { data: productionQueue } = roleProfile
+    ? await supabase
+        .from("production_queue")
+        .select("id, weapon_template_id, quantity, started_at, completes_at, collected")
+        .eq("role_profile_id", roleProfile.id)
+        .eq("collected", false)
+    : { data: [] };
+
+  const { data: weaponSets } = roleProfile
+    ? await supabase
+        .from("weapon_sets")
+        .select("id, weapon_template_id, quantity, equipped_quantity")
+        .eq("role_profile_id", roleProfile.id)
+    : { data: [] };
+
   return (
     <KingView
       legitimacy={roleProfile?.legitimacy ?? 0}
@@ -132,6 +152,9 @@ export default async function KingPage() {
       visibility={visibility ?? []}
       ownership={ownership ?? []}
       structures={structures ?? []}
+      weaponTemplates={weaponTemplates ?? []}
+      productionQueue={productionQueue ?? []}
+      weaponSets={weaponSets ?? []}
     />
   );
 }
