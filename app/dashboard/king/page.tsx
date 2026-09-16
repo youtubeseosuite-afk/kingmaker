@@ -44,6 +44,18 @@ export default async function KingPage() {
       })
     : { data: [] };
 
+  const { data: kingdomCaps } = await supabase
+    .from("kingdom_resources")
+    .select("resource_code, storage_cap")
+    .eq("realm_id", realm.id);
+
+  const { data: roleCaps } = roleProfile
+    ? await supabase
+        .from("role_resources")
+        .select("resource_code, storage_cap")
+        .eq("role_profile_id", roleProfile.id)
+    : { data: [] };
+
   const { data: buildings } = roleProfile
     ? await supabase
         .from("buildings")
@@ -165,6 +177,8 @@ export default async function KingPage() {
       population={population ?? { population: 0, cap: 0, growth_rate: 0 }}
       kingdomResources={kingdomResources ?? []}
       roleResources={roleResources ?? []}
+      kingdomCaps={kingdomCaps ?? []}
+      roleCaps={roleCaps ?? []}
       buildings={buildings ?? []}
       buildingTypes={buildingTypes ?? []}
       skills={skills ?? []}
