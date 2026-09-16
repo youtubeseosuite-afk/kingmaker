@@ -3,9 +3,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { upgradeBuilding } from "./actions";
+import { upgradeBuilding, placeFieldStructure, type FieldStructureType } from "./actions";
 import SkillsPanel from "../skills-panel";
 import { resourceLabels } from "../resource-labels";
+import MapGrid from "../map-grid";
 
 type ResourceRow = { resource_code: string; amount: number };
 type BuildingType =
@@ -32,6 +33,16 @@ type ActiveModifier = {
   modifier_value: number;
   expires_at: string | null;
   role_skills: { skill_name: string } | null;
+};
+type Tile = { id: string; x: number; y: number; terrain: string };
+type VisibilityRow = { tile_id: string; visibility: "unknown" | "scouted" | "visible" };
+type OwnershipRow = { tile_id: string; status: string; owner_realm_id: string | null };
+type StructureRow = { tile_id: string; structure_type: string; level: number };
+
+const structureTypeLabels: Record<FieldStructureType, string> = {
+  mine: "Mine",
+  farm: "Farm",
+  forestry_camp: "Skovbrug",
 };
 
 function amountFor(rows: ResourceRow[], code: string) {
@@ -117,6 +128,10 @@ export default function KingView({
   unlockedCodes,
   realmId,
   activeModifiers,
+  tiles,
+  visibility,
+  ownership,
+  structures,
 }: {
   legitimacy: number;
   roleProfileId: string | null;
@@ -129,11 +144,18 @@ export default function KingView({
   unlockedCodes: string[];
   realmId: string;
   activeModifiers: ActiveModifier[];
+  tiles: Tile[];
+  visibility: VisibilityRow[];
+  ownership: OwnershipRow[];
+  structures: StructureRow[];
 }) {
   const [activeTab, setActiveTab] = useState<Tab>("Slot");
   const [error, setError] = useState<string | null>(null);
+  const [selectedTile, setSelectedTile] = useState<string | null>(null);
+  const [placeError, setPlaceError] = useState<string | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [isPlacePending, startPlaceTransition] = useTransition();
 
   const wood = amountFor(kingdomResources, "wood");
   const stone = amountFor(kingdomResources, "stone");
@@ -156,6 +178,44 @@ export default function KingView({
       if (result.error) {
         setError(result.error);
       } else {
+        router.refresh();
+      }
+    });
+  }
+
+  const visibilityMap: Record<string, "unknown" | "scouted" | "visible"> = {};
+  visibility.forEach((v) => {
+    visibilityMap[v.tile_id] = v.visibility;
+  });
+
+  const ownershipMap: Record<string, { status: string; isMine: boolean }> = {};
+  ownership.forEach((o) => {
+    if (o.status !== "unclaimed") {
+      ownershipMap[o.tile_id] = { status: o.status, isMine: o.owner_realm_id === realmId };
+    }
+  });
+
+  const structureMap: Record<string, { type: string; level: number }> = {};
+  structures.forEach((s) => {
+    structureMap[s.tile_id] = { type: s.structure_type, level: s.level };
+  });
+
+  const selectedStructure = selectedTile ? structureMap[selectedTile] : undefined;
+
+  function handleTileClick(tileId: string) {
+    setSelectedTile(tileId);
+    setPlaceError(null);
+  }
+
+  function handlePlaceStructure(type: FieldStructureType) {
+    if (!roleProfileId || !selectedTile) return;
+    setPlaceError(null);
+    startPlaceTransition(async () => {
+      const result = await placeFieldStructure(roleProfileId, selectedTile, type);
+      if (result.error) {
+        setPlaceError(result.error);
+      } else {
+        setSelectedTile(null);
         router.refresh();
       }
     });
@@ -297,8 +357,53 @@ export default function KingView({
         )}
 
         {activeTab === "Land" && (
-          <div className="placeholder-note">
-            Kortet forbindes når koordinat-gridet er hentet fra Supabase.
+          <div>
+            <MapGrid
+              tiles={tiles}
+              visibility={visibilityMap}
+              ownership={ownershipMap}
+              structures={structureMap}
+              onTileClick={handleTileClick}
+            />
+            <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
+              M = Mine · F = Farm · S = Skovbrug · K = Kloster (Prioren)
+            </p>
+
+            {selectedTile && (
+              <div className="build-project" style={{ marginTop: 12 }}>
+                {placeError && (
+                  <p className="auth-message auth-message--error">{placeError}</p>
+                )}
+                {selectedStructure ? (
+                  <div className="build-project__head">
+                    <span className="build-project__name">
+                      {structureTypeLabels[selectedStructure.type as FieldStructureType] ??
+                        selectedStructure.type}{" "}
+                      — niveau {selectedStructure.level}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    <div className="build-project__head">
+                      <span className="build-project__name">Byg struktur</span>
+                      <span className="build-project__eta">80 træ · 60 sten</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                      {(["mine", "farm", "forestry_camp"] as FieldStructureType[]).map((t) => (
+                        <button
+                          key={t}
+                          className="btn btn--primary"
+                          disabled={isPlacePending}
+                          onClick={() => handlePlaceStructure(t)}
+                        >
+                          {structureTypeLabels[t]}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         )}
 
