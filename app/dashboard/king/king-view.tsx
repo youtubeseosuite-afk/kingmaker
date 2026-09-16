@@ -10,6 +10,7 @@ import {
   queueWeaponProduction,
   collectWeaponProduction,
   type FieldStructureType,
+  type FieldStructureType,
 } from "./actions";
 import SkillsPanel from "../skills-panel";
 import { resourceLabels } from "../resource-labels";
