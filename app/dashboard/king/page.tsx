@@ -118,7 +118,7 @@ export default async function KingPage() {
 
   const { data: structures } = await supabase
     .from("field_structures")
-    .select("tile_id, structure_type, level")
+    .select("id, tile_id, structure_type, level")
     .eq("realm_id", realm.id);
 
   const { data: terrainYields } = await supabase
