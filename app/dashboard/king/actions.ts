@@ -98,3 +98,37 @@ export async function collectWeaponProduction(
 
   return { quantity: data?.quantity };
 }
+
+export async function trainUnits(
+  roleProfileId: string,
+  unitType: string,
+  quantity: number
+): Promise<{ error?: string; queueId?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("train_units", {
+    p_role_profile_id: roleProfileId,
+    p_unit_type: unitType,
+    p_quantity: quantity,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { queueId: data as string };
+}
+
+export async function collectTraining(
+  queueId: string
+): Promise<{ error?: string; quantity?: number }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("collect_training", {
+    p_queue_id: queueId,
+  });
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  return { quantity: data?.quantity };
+}
