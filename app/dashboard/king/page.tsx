@@ -133,6 +133,29 @@ export default async function KingPage() {
         .eq("role_profile_id", roleProfile.id)
     : { data: [] };
 
+  const { data: garrison } = await supabase
+    .from("realm_units")
+    .select("id, unit_type, quantity")
+    .eq("realm_id", realm.id)
+    .is("tile_id", null);
+
+  const { data: unitTypes } = await supabase
+    .from("unit_types")
+    .select("code, display_name, base_cp, training_time_seconds, training_cost_food")
+    .order("training_cost_food");
+
+  const { data: trainingQueue } = roleProfile
+    ? await supabase
+        .from("unit_training_queue")
+        .select("id, unit_type, quantity, started_at, completes_at, collected")
+        .eq("role_profile_id", roleProfile.id)
+        .eq("collected", false)
+    : { data: [] };
+
+  const { data: armyCp } = await supabase.rpc("calculate_army_cp", {
+    p_realm_id: realm.id,
+  });
+
   return (
     <KingView
       legitimacy={roleProfile?.legitimacy ?? 0}
@@ -155,6 +178,10 @@ export default async function KingPage() {
       weaponTemplates={weaponTemplates ?? []}
       productionQueue={productionQueue ?? []}
       weaponSets={weaponSets ?? []}
+      garrison={garrison ?? []}
+      unitTypes={unitTypes ?? []}
+      trainingQueue={trainingQueue ?? []}
+      armyCp={armyCp ?? 0}
     />
   );
 }
